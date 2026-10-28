@@ -1,0 +1,197 @@
+package com.switchfully.spring.parkshark.common.api;
+
+import com.switchfully.spring.parkshark.common.exception.ConflictException;
+import com.switchfully.spring.parkshark.common.exception.NotFoundException;
+import org.junit.jupiter.api.Test;
+import org.springframework.core.MethodParameter;
+import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.mock.http.MockHttpInputMessage;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authorization.AuthorityAuthorizationDecision;
+import org.springframework.security.authorization.AuthorizationDeniedException;
+import org.springframework.security.core.authority.AuthorityUtils;
+import org.springframework.validation.BeanPropertyBindingResult;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.context.request.ServletWebRequest;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.json.JsonMapper;
+
+import java.nio.charset.StandardCharsets;
+import java.security.Principal;
+import java.util.List;
+import java.util.Map;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowableOfType;
+
+class GlobalExceptionHandlerTest {
+
+    private final GlobalExceptionHandler handler = new GlobalExceptionHandler();
+
+    @Test
+    void givenAFailedAuthentication_whenHandled_thenReturns401WithABasicChallengeWithoutLeakingTheReason() {
+        BadCredentialsException exception = new BadCredentialsException("Bad credentials for jane@doe.be");
+
+        ResponseEntity<ProblemDetail> response = handler.handleAuthenticationFailure(exception);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(response.getHeaders().getFirst(HttpHeaders.WWW_AUTHENTICATE)).isEqualTo("Basic realm=\"Parkshark\"");
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getDetail()).isEqualTo("Invalid credentials");
+    }
+
+    @Test
+    void givenNotFoundException_whenHandled_thenReturns404WithItsMessage() {
+        NotFoundException exception = new NotFoundException("No parking lot found for id 42");
+
+        ProblemDetail response = handler.handleNotFound(exception);
+
+        assertThat(response.getStatus()).isEqualTo(HttpStatus.NOT_FOUND.value());
+        assertThat(response.getDetail()).isEqualTo("No parking lot found for id 42");
+    }
+
+    @Test
+    void givenConflictException_whenHandled_thenReturns409WithItsMessage() {
+        ConflictException exception = new ConflictException("Email already in use");
+
+        ProblemDetail response = handler.handleConflict(exception);
+
+        assertThat(response.getStatus()).isEqualTo(HttpStatus.CONFLICT.value());
+        assertThat(response.getDetail()).isEqualTo("Email already in use");
+    }
+
+    @Test
+    void givenAccessDeniedByAMissingAuthority_whenHandled_thenReturns403NamingTheUserAndTheAuthority() {
+        AuthorizationDeniedException exception = new AuthorizationDeniedException("Access Denied",
+                new AuthorityAuthorizationDecision(false, AuthorityUtils.createAuthorityList("SOME_FEATURE")));
+        Principal jane = () -> "jane@doe.be";
+
+        ProblemDetail response = handler.handleAccessDenied(exception, jane);
+
+        assertThat(response.getStatus()).isEqualTo(HttpStatus.FORBIDDEN.value());
+        assertThat(response.getDetail()).isEqualTo("User jane@doe.be has no access to SOME_FEATURE");
+    }
+
+    @Test
+    void givenIllegalArgumentException_whenHandled_thenReturns400WithItsMessage() {
+        IllegalArgumentException exception = new IllegalArgumentException("Amount must be positive");
+
+        ProblemDetail response = handler.handleBadRequest(exception);
+
+        assertThat(response.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
+        assertThat(response.getDetail()).isEqualTo("Amount must be positive");
+    }
+
+    @Test
+    void givenUnexpectedException_whenHandled_thenReturns500WithoutLeakingItsMessage() {
+        RuntimeException exception = new RuntimeException("database password is wrong");
+
+        ProblemDetail response = handler.handleUnexpected(exception);
+
+        assertThat(response.getStatus()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR.value());
+        assertThat(response.getDetail()).isEqualTo("An unexpected error occurred");
+    }
+
+    @Test
+    void givenTwoInvalidFields_whenValidationFails_thenReturns400ListingTheErrorsOfEachField() throws NoSuchMethodException {
+        BeanPropertyBindingResult bindingResult = new BeanPropertyBindingResult(new Object(), "createMemberDto");
+        bindingResult.addError(fieldError("email", "Email is required"));
+        bindingResult.addError(fieldError("firstName", "First name is required"));
+
+        ResponseEntity<Object> response = handler.handleMethodArgumentNotValid(validationException(bindingResult), new HttpHeaders(),
+                HttpStatus.BAD_REQUEST, new ServletWebRequest(new MockHttpServletRequest()));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(errorsOf(response)).isEqualTo(Map.of(
+                "email", List.of("Email is required"),
+                "firstName", List.of("First name is required")));
+    }
+
+    @Test
+    void givenTwoViolationsOnTheSameField_whenValidationFails_thenListsBothMessagesInAlphabeticalOrder() throws NoSuchMethodException {
+        BeanPropertyBindingResult bindingResult = new BeanPropertyBindingResult(new Object(), "createMemberDto");
+        bindingResult.addError(fieldError("password", "Password must be between 8 and 72 characters"));
+        bindingResult.addError(fieldError("password", "Password is required"));
+
+        ResponseEntity<Object> response = handler.handleMethodArgumentNotValid(validationException(bindingResult), new HttpHeaders(),
+                HttpStatus.BAD_REQUEST, new ServletWebRequest(new MockHttpServletRequest()));
+
+        assertThat(errorsOf(response)).isEqualTo(Map.of(
+                "password", List.of("Password is required", "Password must be between 8 and 72 characters")));
+    }
+
+    @Test
+    void givenOptimisticLockingFailure_whenHandled_thenReturns409AskingTheClientToRetry() {
+        OptimisticLockingFailureException exception = new OptimisticLockingFailureException("Row was updated by another transaction");
+
+        ProblemDetail response = handler.handleConcurrentModification(exception);
+
+        assertThat(response.getStatus()).isEqualTo(HttpStatus.CONFLICT.value());
+        assertThat(response.getDetail()).isEqualTo("The data was modified by another request, please retry");
+    }
+
+    @Test
+    void givenWrongTypeInsideAList_whenTheBodyIsUnreadable_thenNamesTheFieldWithItsIndex() {
+        HttpMessageNotReadableException exception = unreadable("""
+                {"lines": [{"amount": 1}, {"amount": "many"}]}
+                """);
+
+        ResponseEntity<Object> response = handler.handleHttpMessageNotReadable(exception, new HttpHeaders(),
+                HttpStatus.BAD_REQUEST, new ServletWebRequest(new MockHttpServletRequest()));
+
+        assertThat(((ProblemDetail) response.getBody()).getDetail()).isEqualTo("Invalid value for field 'lines[1].amount'");
+    }
+
+    @Test
+    void givenWrongTypeInANestedObject_whenTheBodyIsUnreadable_thenNamesTheFullPath() {
+        HttpMessageNotReadableException exception = unreadable("""
+                {"lines": [], "delivery": {"floor": "top"}}
+                """);
+
+        ResponseEntity<Object> response = handler.handleHttpMessageNotReadable(exception, new HttpHeaders(),
+                HttpStatus.BAD_REQUEST, new ServletWebRequest(new MockHttpServletRequest()));
+
+        assertThat(((ProblemDetail) response.getBody()).getDetail()).isEqualTo("Invalid value for field 'delivery.floor'");
+    }
+
+    private static HttpMessageNotReadableException unreadable(String json) {
+        JacksonException cause = catchThrowableOfType(JacksonException.class, () -> new JsonMapper().readValue(json, Order.class));
+        return new HttpMessageNotReadableException("Unreadable", cause, new MockHttpInputMessage(json.getBytes(StandardCharsets.UTF_8)));
+    }
+
+    private record Order(List<Line> lines, Delivery delivery) {
+    }
+
+    private record Line(Integer amount) {
+    }
+
+    private record Delivery(Integer floor) {
+    }
+
+    private static FieldError fieldError(String field, String message) {
+        return new FieldError("createMemberDto", field, message);
+    }
+
+    private MethodArgumentNotValidException validationException(BeanPropertyBindingResult bindingResult) throws NoSuchMethodException {
+        MethodParameter parameter = new MethodParameter(getClass().getDeclaredMethod("someEndpoint", Object.class), 0);
+        return new MethodArgumentNotValidException(parameter, bindingResult);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, List<String>> errorsOf(ResponseEntity<Object> response) {
+        ProblemDetail body = (ProblemDetail) response.getBody();
+        assertThat(body).isNotNull();
+        return (Map<String, List<String>>) body.getProperties().get("errors");
+    }
+
+    @SuppressWarnings("unused")
+    private void someEndpoint(Object body) {
+    }
+}

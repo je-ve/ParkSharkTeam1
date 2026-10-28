@@ -1,0 +1,5 @@
+org.springframework.boot.EnvironmentPostProcessor=\
+com.switchfully.spring.parkshark.common.startup.RequiredConfigurationEnvironmentPostProcessor
+
+org.springframework.boot.diagnostics.FailureAnalyzer=\
+com.switchfully.spring.parkshark.common.startup.MissingConfigurationFailureAnalyzer
