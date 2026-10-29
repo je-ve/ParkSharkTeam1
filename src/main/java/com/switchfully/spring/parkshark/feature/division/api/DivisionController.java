@@ -8,6 +8,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.access.annotation.Secured;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/divisions")
 public class DivisionController {
@@ -25,5 +27,12 @@ public class DivisionController {
     @ResponseStatus(HttpStatus.CREATED)
     public DivisionDto createDivision(@RequestBody @Valid CreateDivisionRequest request) {
         return divisionMapper.mapToDto(divisionService.createDivision(request));
+    }
+
+    @GetMapping
+    @Secured("VIEW_DIVISIONS")
+    @ResponseStatus(HttpStatus.OK)
+    public List<DivisionDto> getDivisions() {
+        return divisionMapper.mapToDto(divisionService.listAllDivisions());
     }
 }

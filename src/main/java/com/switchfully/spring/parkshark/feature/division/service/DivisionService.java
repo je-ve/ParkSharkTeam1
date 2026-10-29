@@ -6,6 +6,7 @@ import com.switchfully.spring.parkshark.feature.division.domain.DivisionReposito
 import com.switchfully.spring.parkshark.feature.division.exception.DivisionConflictException;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.stream.StreamSupport;
 
 @Service
@@ -21,5 +22,9 @@ public class DivisionService {
         if(divisionRepository.existsByName(request.name()))
             throw DivisionConflictException.duplicateDivisionException(request.name());
         return divisionRepository.save(new Division(request.name(), request.originalName(), request.director()));
+    }
+
+    public List<Division> listAllDivisions() {
+        return StreamSupport.stream(divisionRepository.findAll().spliterator(), false).toList();
     }
 }
