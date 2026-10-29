@@ -26,7 +26,10 @@ Copy `.env.example` to `.env` and fill in your own values:
 DB_URL=jdbc:postgresql://localhost:5432/parkshark
 DB_USERNAME=postgres
 DB_PASSWORD=secret
+PASSWORD_MANAGER=managerSecret
 ```
+
+`PASSWORD_MANAGER` is the password of the `manager@parkshark.com` account, created by the migration `db/vendor/postgresql/V2__insert_manager.sql`.
 
 - `.env` is git-ignored: never commit it.
 - It uses the `.properties` format: write values **without quotes**.

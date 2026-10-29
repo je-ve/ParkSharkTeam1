@@ -27,7 +27,8 @@ class RequiredConfigurationEnvironmentPostProcessorTest {
     void givenAMissingKey_whenTheApplicationStarts_thenRefusesNamingThatKey() {
         MockEnvironment environment = new MockEnvironment()
                 .withProperty("DB_URL", "jdbc:postgresql://localhost:5432/parkshark")
-                .withProperty("DB_USERNAME", "parkshark");
+                .withProperty("DB_USERNAME", "parkshark")
+                .withProperty("PASSWORD_MANAGER", "manager-s3cret");
 
         MissingConfigurationException thrown = catchThrowableOfType(MissingConfigurationException.class,
                 () -> postProcessor.postProcessEnvironment(environment, new SpringApplication()));
@@ -42,7 +43,20 @@ class RequiredConfigurationEnvironmentPostProcessorTest {
         MissingConfigurationException thrown = catchThrowableOfType(MissingConfigurationException.class,
                 () -> postProcessor.postProcessEnvironment(environment, new SpringApplication()));
 
-        assertThat(thrown.getMissingKeys()).containsExactly("DB_URL", "DB_PASSWORD");
+        assertThat(thrown.getMissingKeys()).containsExactly("DB_URL", "DB_PASSWORD", "PASSWORD_MANAGER");
+    }
+
+    @Test
+    void givenNoManagerPassword_whenTheApplicationStarts_thenRefusesInsteadOfStoringThePlaceholderAsPassword() {
+        MockEnvironment environment = new MockEnvironment()
+                .withProperty("DB_URL", "jdbc:postgresql://localhost:5432/parkshark")
+                .withProperty("DB_USERNAME", "parkshark")
+                .withProperty("DB_PASSWORD", "s3cret");
+
+        MissingConfigurationException thrown = catchThrowableOfType(MissingConfigurationException.class,
+                () -> postProcessor.postProcessEnvironment(environment, new SpringApplication()));
+
+        assertThat(thrown).hasMessage("Missing required configuration: PASSWORD_MANAGER");
     }
 
     @ParameterizedTest(name = "DB_PASSWORD = \"{0}\" counts as missing")
@@ -60,6 +74,7 @@ class RequiredConfigurationEnvironmentPostProcessorTest {
         return new MockEnvironment()
                 .withProperty("DB_URL", "jdbc:postgresql://localhost:5432/parkshark")
                 .withProperty("DB_USERNAME", "parkshark")
-                .withProperty("DB_PASSWORD", "s3cret");
+                .withProperty("DB_PASSWORD", "s3cret")
+                .withProperty("PASSWORD_MANAGER", "manager-s3cret");
     }
 }
