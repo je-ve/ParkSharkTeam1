@@ -3,11 +3,9 @@ package com.switchfully.spring.parkshark.feature.division.api;
 import com.switchfully.spring.parkshark.feature.division.api.dto.DivisionDto;
 import com.switchfully.spring.parkshark.feature.division.api.request.CreateDivisionRequest;
 import com.switchfully.spring.parkshark.feature.division.service.DivisionService;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.annotation.Secured;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/divisions")
@@ -23,6 +21,7 @@ public class DivisionController {
 
     @PostMapping
     @Secured("CREATE_DIVISION")
+    @ResponseStatus(HttpStatus.CREATED)
     public DivisionDto createDivision(@RequestBody CreateDivisionRequest request) {
         return divisionMapper.mapToDto(divisionService.createDivision(request));
     }
