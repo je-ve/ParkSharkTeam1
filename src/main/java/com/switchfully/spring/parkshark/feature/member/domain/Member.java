@@ -1,13 +1,16 @@
 package com.switchfully.spring.parkshark.feature.member.domain;
+
 import com.switchfully.spring.parkshark.common.domain.Address;
 import com.switchfully.spring.parkshark.feature.security.domain.Credentials;
 import jakarta.persistence.*;
 
 import java.time.LocalDate;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
 @Entity
-@Table(name="members")
+@Table(name = "members")
 public class Member {
 
     @Id
@@ -15,13 +18,17 @@ public class Member {
     private UUID id;
     private String firstName;
     private String lastName;
+    @Embedded
     private Address address;
     private String telephone;
+    @Embedded
     private LicensePlate licensePlate;
+
     private LocalDate registrationDate;
+    @Enumerated(EnumType.STRING)
     private MembershipLevel membershipLevel;
-    @OneToOne
-    @JoinColumn(name ="credentials_id")
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "credentials_id")
     private Credentials credentials;
 
     public Member(String firstName, String lastName, Address address, String telephone, LicensePlate licensePlate, LocalDate registrationDate, MembershipLevel membershipLevel, Credentials credentials) {
@@ -30,11 +37,10 @@ public class Member {
         this.address = address;
         this.telephone = telephone;
         this.licensePlate = licensePlate;
-        this.registrationDate = registrationDate;
-        this.membershipLevel = membershipLevel;
-        this.credentials = credentials;
+        this.registrationDate = Objects.requireNonNull(registrationDate);
+        this.membershipLevel = membershipLevel  == null ? MembershipLevel.BRONZE : membershipLevel;
+        this.credentials = Objects.requireNonNull(credentials);
     }
-
     protected Member() {
     }
 
@@ -68,6 +74,10 @@ public class Member {
 
     public MembershipLevel getMembershipLevel() {
         return membershipLevel;
+    }
+
+    public Credentials getCredentials() {
+        return credentials;
     }
 }
 

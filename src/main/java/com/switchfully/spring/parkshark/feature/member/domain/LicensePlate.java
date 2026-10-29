@@ -9,7 +9,7 @@ public class LicensePlate {
     @Column(name="license_plate_number")
     private String number;
 
-    @Column(name="licence_plate_country")
+    @Column(name="license_plate_country")
     private String issuingCountry;
 
     public LicensePlate(String number, String issuingCountry) {
@@ -17,7 +17,7 @@ public class LicensePlate {
         this.issuingCountry = issuingCountry;
     }
 
-    public LicensePlate() {
+    protected LicensePlate() {
     }
 
     public String getNumber() {
