@@ -2,9 +2,11 @@ package com.switchfully.spring.parkshark.feature.division.api;
 
 import com.switchfully.spring.parkshark.feature.division.api.dto.DivisionDto;
 import com.switchfully.spring.parkshark.feature.division.domain.Division;
+import org.springframework.stereotype.Component;
 
 import java.util.List;
 
+@Component
 public class DivisionMapper {
 
     public DivisionDto mapToDto(Division division) {

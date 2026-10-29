@@ -7,5 +7,5 @@ import java.util.UUID;
 
 @Repository
 public interface DivisionRepository extends CrudRepository<Division, UUID>{
-
+    boolean existsByName(String name);
 }

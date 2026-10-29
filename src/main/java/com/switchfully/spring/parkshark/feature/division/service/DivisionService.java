@@ -1,7 +1,12 @@
 package com.switchfully.spring.parkshark.feature.division.service;
 
+import com.switchfully.spring.parkshark.feature.division.api.request.CreateDivisionRequest;
+import com.switchfully.spring.parkshark.feature.division.domain.Division;
 import com.switchfully.spring.parkshark.feature.division.domain.DivisionRepository;
+import com.switchfully.spring.parkshark.feature.division.exception.DivisionConflictException;
 import org.springframework.stereotype.Service;
+
+import java.util.stream.StreamSupport;
 
 @Service
 public class DivisionService {
@@ -12,5 +17,9 @@ public class DivisionService {
         this.divisionRepository = divisionRepository;
     }
 
-    public Division createDivision()
+    public Division createDivision(CreateDivisionRequest request) {
+        if(divisionRepository.existsByName(request.name()))
+            throw DivisionConflictException.duplicateDivisionException(request.name());
+        return divisionRepository.save(new Division(request.name(), request.originalName(), request.director()));
+    }
 }

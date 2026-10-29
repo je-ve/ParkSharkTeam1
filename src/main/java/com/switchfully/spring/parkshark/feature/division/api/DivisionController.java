@@ -2,6 +2,7 @@ package com.switchfully.spring.parkshark.feature.division.api;
 
 import com.switchfully.spring.parkshark.feature.division.api.dto.DivisionDto;
 import com.switchfully.spring.parkshark.feature.division.api.request.CreateDivisionRequest;
+import com.switchfully.spring.parkshark.feature.division.service.DivisionService;
 import org.springframework.security.access.annotation.Secured;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
