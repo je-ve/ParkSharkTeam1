@@ -7,7 +7,6 @@ import com.switchfully.spring.parkshark.feature.division.exception.DivisionConfl
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.stream.StreamSupport;
 
 @Service
 public class DivisionService {
@@ -25,6 +24,6 @@ public class DivisionService {
     }
 
     public List<Division> listAllDivisions() {
-        return StreamSupport.stream(divisionRepository.findAll().spliterator(), false).toList();
+        return divisionRepository.getAllBy();
     }
 }
