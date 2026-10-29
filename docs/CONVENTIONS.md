@@ -100,6 +100,7 @@ public class ParkingLotController {
 - Naming: `V<version>__<description>.sql`, with **two** underscores, e.g. `V2__create_parking_lot.sql`.
 - **Avoid version collisions between branches.** Two branches that both add a `V2` will conflict at merge time. Either announce the number you take in the team chat, or use a timestamp as version: `V202610281430__create_parking_lot.sql` (it sorts after `V1`).
 - Keep the SQL portable: the tests run the same migrations on H2 (PostgreSQL mode). Prefer standard types (`uuid`, `varchar`, `integer`, `numeric`, `timestamp`, `boolean`).
+- SQL that only works on PostgreSQL (extensions, `crypt()`…) goes in `db/vendor/postgresql/`, not in `db/migration/` (Flyway scans `db/migration` and all its subfolders). Versions are shared between both folders: never reuse a number.
 - Use constraints (`not null`, `unique`, foreign keys) in the DB, not only in Java.
 
 ### Switching branches with different migrations

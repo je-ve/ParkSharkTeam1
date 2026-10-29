@@ -52,6 +52,7 @@ Any exception thrown on the way → GlobalExceptionHandler → ProblemDetail JSO
 - `spring.jpa.hibernate.ddl-auto=validate`: Hibernate **never** creates tables. It only checks at startup that your `@Entity` classes match the tables. If they don't, the app won't start: write a migration.
 - `spring.jpa.open-in-view=false`: the DB session closes when the service method returns. Lazy relations must be loaded inside the `@Transactional` service, not in the controller. Map entities to DTOs in the service.
 - Tests run on H2 in PostgreSQL mode (`src/test/resources/application.properties`) with the same Flyway migrations.
+- Migrations in `db/vendor/postgresql` only run on PostgreSQL (`spring.flyway.locations=classpath:db/migration,classpath:db/vendor/{vendor}`), e.g. `V2__insert_manager.sql`, which uses `pgcrypto`. They are skipped on H2.
 
 ## Error handling
 
