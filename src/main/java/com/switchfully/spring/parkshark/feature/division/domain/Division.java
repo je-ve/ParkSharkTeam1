@@ -24,7 +24,7 @@ public class Division {
     @Column(name = "PARENT_DIVISION_ID")
     private UUID parentDivisionId;
 
-    public Division(String originalName, String director, String name) {
+    public Division(String name, String originalName, String director) {
         this.originalName = originalName;
         this.director = director;
         this.name = name;
