@@ -1,4 +1,4 @@
-package com.switchfully.spring.parkshark.feature.member.api;
+package com.switchfully.spring.parkshark.feature.member.api.dto;
 
 import com.switchfully.spring.parkshark.common.api.dto.AddressDto;
 import com.switchfully.spring.parkshark.feature.member.domain.MembershipLevel;

@@ -6,20 +6,22 @@ import jakarta.validation.constraints.Size;
 
 public record AddressDto(
         @NotBlank(message = "Street name is required")
-        @Size(max = 255, message = "Street name must be at most 255 charachters")
-        @Schema(description = "Streetname", example = "Meir")
+        @Size(max = 255, message = "Street name must be at most 255 characters")
+        @Schema(description = "Street name", example = "Meir")
         String streetName,
+
         @NotBlank(message = "Street number is required")
-        @Size(max = 20, message = "Street number must be at most 20 charachters")
+        @Size(max = 20, message = "Street number must be at most 20 characters")
         @Schema(description = "Street number", example = "10a")
         String streetNumber,
-        @NotBlank(message = "Postal coded is required")
-        @Size(max = 20, message = "Postal code must be at most 20 charachters")
+
+        @NotBlank(message = "Postal code is required")
+        @Size(max = 20, message = "Postal code must be at most 20 characters")
         @Schema(description = "Postal code", example = "2000")
         String postalCode,
+
         @NotBlank(message = "City is required")
-        @Size(max = 255, message = "City must be at most 255 charachters")
+        @Size(max = 255, message = "City must be at most 255 characters")
         @Schema(description = "City", example = "Antwerp")
-        String city
-) {
+        String city) {
 }
