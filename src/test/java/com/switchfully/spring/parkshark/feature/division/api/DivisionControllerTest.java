@@ -1,8 +1,11 @@
 package com.switchfully.spring.parkshark.feature.division.api;
 
+import com.switchfully.spring.parkshark.feature.division.domain.DivisionRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -29,6 +32,9 @@ class DivisionControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    DivisionRepository divisionRepository;
+
     private void createDivision(String name) throws Exception {
         mockMvc.perform(post("/divisions")
                         .with(csrf())
@@ -43,6 +49,11 @@ class DivisionControllerTest {
     @Nested
     @DisplayName("Testing OK|CREATED")
     class TestingOkCreated {
+        @BeforeEach
+        void setUp() {
+            divisionRepository.deleteAll();
+        }
+
         @Test
         @WithMockUser(authorities = "VIEW_DIVISIONS")
         void givenGoodCredentials_whenGetAllDivisions_thenReturns200AndDto() throws Exception {
@@ -53,7 +64,7 @@ class DivisionControllerTest {
                             .accept(MediaType.APPLICATION_JSON))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$").isArray())
-                    .andExpect(jsonPath("$", hasSize(4))); //4 because the create_division add an extra one
+                    .andExpect(jsonPath("$", hasSize(3)));
         }
 
         @Test
