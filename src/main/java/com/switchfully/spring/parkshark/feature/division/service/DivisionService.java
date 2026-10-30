@@ -6,6 +6,8 @@ import com.switchfully.spring.parkshark.feature.division.api.request.CreateDivis
 import com.switchfully.spring.parkshark.feature.division.domain.Division;
 import com.switchfully.spring.parkshark.feature.division.domain.DivisionRepository;
 import com.switchfully.spring.parkshark.feature.division.exception.DivisionConflictException;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,21 +26,24 @@ public class DivisionService {
     }
 
     public DivisionDto createDivision(CreateDivisionRequest request) {
-        if(divisionRepository.existsByName(request.name()))
+        if (divisionRepository.existsByName(request.name()))
             throw DivisionConflictException.duplicateDivisionException(request.name());
-        return divisionMapper.mapToDto(
-                divisionRepository.save(
-                        new Division(
-                                request.name(),
-                                request.originalName(),
-                                request.director())
-                )
-        );
+        try {
+            Division division = divisionRepository.saveAndFlush(
+                    new Division(
+                            request.name(),
+                            request.originalName(),
+                            request.director()));
+            return divisionMapper.mapToDto(division);
+        } catch (DataIntegrityViolationException e) {
+            throw DivisionConflictException.duplicateDivisionException(request.name(), e);
+        }
     }
 
+    @Transactional(readOnly = true)
     public List<DivisionDto> listAllDivisions() {
         return divisionMapper.mapToDto(
-                divisionRepository.findAll()
+                divisionRepository.findAll(Sort.by("name"))
         );
     }
 }

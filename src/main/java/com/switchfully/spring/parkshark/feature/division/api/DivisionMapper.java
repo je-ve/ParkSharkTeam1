@@ -1,7 +1,6 @@
 package com.switchfully.spring.parkshark.feature.division.api;
 
 import com.switchfully.spring.parkshark.feature.division.api.dto.DivisionDto;
-import com.switchfully.spring.parkshark.feature.division.api.dto.DivisionOverviewDto;
 import com.switchfully.spring.parkshark.feature.division.domain.Division;
 import org.springframework.stereotype.Component;
 
@@ -22,15 +21,5 @@ public class DivisionMapper {
         return divisions.stream()
                 .map(this::mapToDto)
                 .toList();
-    }
-
-    public DivisionOverviewDto mapToDto(Division current, Division parent, List<Division> children) {
-        return new DivisionOverviewDto(
-                current.getName(),
-                current.getOriginalName(),
-                current.getDirector(),
-                mapToDto(parent),
-                mapToDto(children)
-        );
     }
 }

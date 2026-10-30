@@ -12,23 +12,16 @@ public class Division {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "NAME")
     private String name;
 
-    @Column(name = "ORIGINAL_NAME")
     private String originalName;
 
-    @Column(name = "DIRECTOR")
     private String director;
 
-    @Column(name = "PARENT_DIVISION_ID")
-    private UUID parentDivisionId;
-
     public Division(String name, String originalName, String director) {
+        this.name = name;
         this.originalName = originalName;
         this.director = director;
-        this.name = name;
-        this.parentDivisionId = null;
     }
 
     protected Division() {}
@@ -47,9 +40,5 @@ public class Division {
 
     public String getDirector() {
         return director;
-    }
-
-    public UUID getParentDivisionId() {
-        return parentDivisionId;
     }
 }

@@ -6,14 +6,17 @@ import com.switchfully.spring.parkshark.feature.division.api.dto.DivisionDto;
 import com.switchfully.spring.parkshark.feature.division.api.request.CreateDivisionRequest;
 import com.switchfully.spring.parkshark.feature.division.domain.Division;
 import com.switchfully.spring.parkshark.feature.division.domain.DivisionRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Sort;
 
-import java.util.UUID;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -28,28 +31,33 @@ class DivisionServiceTest {
     @Mock
     private DivisionRepository repository;
 
-    @Mock
-    private DivisionMapper mapper;
-
-    @InjectMocks
     private DivisionService service;
+
+    @BeforeEach
+    void setUp() {
+        service = new DivisionService(repository, new DivisionMapper());
+    }
 
     @DisplayName("Creating a division")
     @Test
-    void givenRequest_whenCallingCreateDivision_thenADivisionObjectIsReturned() throws InstantiationException, IllegalAccessException {
+    void givenRequest_whenCallingCreateDivision_thenTheDivisionIsSavedAndReturned() {
         CreateDivisionRequest request = new CreateDivisionRequest("MyCompany", "MyOldCompany", "MyBoss");
         when(repository.existsByName("MyCompany")).thenReturn(false);
-        when(repository.save(any(Division.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(mapper.mapToDto(any(Division.class))).thenReturn(new DivisionDto(UUID.randomUUID(), "MyCompany", "MyOldCompany", "MyBoss"));
+        when(repository.saveAndFlush(any(Division.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
         DivisionDto divisionDto = service.createDivision(request);
 
-        assertThat(divisionDto.name()).isEqualTo(request.name());
-        assertThat(divisionDto.originalName()).isEqualTo(request.originalName());
-        assertThat(divisionDto.director()).isEqualTo(request.director());
-        verify(repository).save(any(Division.class));
+        ArgumentCaptor<Division> saved = ArgumentCaptor.forClass(Division.class);
+        verify(repository).saveAndFlush(saved.capture());
+        assertThat(saved.getValue().getName()).isEqualTo("MyCompany");
+        assertThat(saved.getValue().getOriginalName()).isEqualTo("MyOldCompany");
+        assertThat(saved.getValue().getDirector()).isEqualTo("MyBoss");
+        assertThat(divisionDto.name()).isEqualTo("MyCompany");
+        assertThat(divisionDto.originalName()).isEqualTo("MyOldCompany");
+        assertThat(divisionDto.director()).isEqualTo("MyBoss");
     }
 
-    @DisplayName("Creating conflict")
+    @DisplayName("Creating a division with an existing name")
     @Test
     void givenDuplicateNameDivision_whenCallingCreateDivision_thenAnExceptionIsThrown() {
         CreateDivisionRequest request = new CreateDivisionRequest("MyCompany", "MyOldCompany", "MyBoss");
@@ -59,6 +67,31 @@ class DivisionServiceTest {
                 .isInstanceOf(ConflictException.class)
                 .hasMessage("Division MyCompany already exists.");
 
-        verify(repository, never()).save(any());
+        verify(repository, never()).saveAndFlush(any());
+    }
+
+    @DisplayName("Creating a division while another request saves the same name")
+    @Test
+    void givenTheSameNameSavedConcurrently_whenCallingCreateDivision_thenAConflictIsThrown() {
+        CreateDivisionRequest request = new CreateDivisionRequest("MyCompany", "MyOldCompany", "MyBoss");
+        when(repository.existsByName("MyCompany")).thenReturn(false);
+        when(repository.saveAndFlush(any(Division.class))).thenThrow(new DataIntegrityViolationException("unique constraint"));
+
+        assertThatThrownBy(() -> service.createDivision(request))
+                .isInstanceOf(ConflictException.class)
+                .hasMessage("Division MyCompany already exists.");
+    }
+
+    @DisplayName("Listing all divisions")
+    @Test
+    void givenSavedDivisions_whenCallingListAllDivisions_thenReturnsThemSortedByName() {
+        when(repository.findAll(Sort.by("name"))).thenReturn(List.of(
+                new Division("Alpha", "OldAlpha", "Alice"),
+                new Division("Beta", "OldBeta", "Bob")));
+
+        List<DivisionDto> divisions = service.listAllDivisions();
+
+        assertThat(divisions).extracting(DivisionDto::name).containsExactly("Alpha", "Beta");
+        verify(repository).findAll(Sort.by("name"));
     }
 }
