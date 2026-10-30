@@ -18,10 +18,20 @@ public class Division {
 
     private String director;
 
+    private UUID parentId;
+
     public Division(String name, String originalName, String director) {
         this.name = name;
         this.originalName = originalName;
         this.director = director;
+        this.parentId = null;
+    }
+
+    public Division(String name, String originalName, String director, UUID parentId) {
+        this.name = name;
+        this.originalName = originalName;
+        this.director = director;
+        this.parentId = parentId;
     }
 
     protected Division() {}
@@ -36,6 +46,10 @@ public class Division {
 
     public String getOriginalName() {
         return originalName;
+    }
+
+    public UUID getParentId() {
+        return parentId;
     }
 
     public String getDirector() {

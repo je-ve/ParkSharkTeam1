@@ -2,16 +2,20 @@ package com.switchfully.spring.parkshark.feature.division.service;
 
 import com.switchfully.spring.parkshark.feature.division.api.DivisionMapper;
 import com.switchfully.spring.parkshark.feature.division.api.dto.DivisionDto;
+import com.switchfully.spring.parkshark.feature.division.api.dto.DivisionOverviewDto;
 import com.switchfully.spring.parkshark.feature.division.api.request.CreateDivisionRequest;
 import com.switchfully.spring.parkshark.feature.division.domain.Division;
 import com.switchfully.spring.parkshark.feature.division.domain.DivisionRepository;
 import com.switchfully.spring.parkshark.feature.division.exception.DivisionConflictException;
+import com.switchfully.spring.parkshark.feature.division.exception.DivisionNotFoundException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.crossstore.ChangeSetPersister;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -40,10 +44,39 @@ public class DivisionService {
         }
     }
 
+    public DivisionOverviewDto createSubdivision(CreateDivisionRequest request, UUID parentId) {
+        verifyParameterIsFilledIn(parentId.toString(), "ID");
+        if (!divisionRepository.existsById(parentId))
+            throw DivisionNotFoundException.divisionNotFoundException(parentId.toString());
+        if (divisionRepository.existsByName(request.name()))
+            throw DivisionConflictException.duplicateDivisionException(request.name());
+        try {
+            Division division = divisionRepository.saveAndFlush(
+                    new Division(
+                            request.name(),
+                            request.originalName(),
+                            request.director(),
+                            parentId
+                    )
+            );
+            return divisionMapper.mapToDto(
+                    division,
+                    divisionRepository.getById(parentId),
+                    List.of()
+            );
+        } catch (DataIntegrityViolationException e) {
+            throw DivisionConflictException.duplicateDivisionException(request.name(), e);
+        }
+    }
+
     @Transactional(readOnly = true)
     public List<DivisionDto> listAllDivisions() {
         return divisionMapper.mapToDto(
                 divisionRepository.findAll(Sort.by("name"))
         );
+    }
+
+    private void verifyParameterIsFilledIn(String value, String parameterName) {
+        if (value == null || value.isEmpty()) throw DivisionNotFoundException.divisionNotFoundException(parameterName);
     }
 }

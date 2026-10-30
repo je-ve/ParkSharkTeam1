@@ -26,6 +26,7 @@ public class DivisionMapper {
 
     public DivisionOverviewDto mapToDto(Division current, Division parent, List<Division> children) {
         return new DivisionOverviewDto(
+                current.getId(),
                 current.getName(),
                 current.getOriginalName(),
                 current.getDirector(),
