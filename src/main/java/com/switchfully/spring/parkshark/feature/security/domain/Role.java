@@ -7,7 +7,8 @@ public enum Role {
     MANAGER(
             Feature.CREATE_MEMBER,
             Feature.CREATE_DIVISION,
-            Feature.VIEW_DIVISIONS)
+            Feature.VIEW_DIVISIONS,
+            Feature.VIEW_MEMBERS)
     ;
 
     private final Set<Feature> features;
