@@ -14,11 +14,9 @@ import java.util.List;
 @RequestMapping("/divisions")
 public class DivisionController {
 
-    private final DivisionMapper divisionMapper;
     private final DivisionService divisionService;
 
-    public DivisionController(DivisionMapper divisionMapper, DivisionService divisionService) {
-        this.divisionMapper = divisionMapper;
+    public DivisionController(DivisionService divisionService) {
         this.divisionService = divisionService;
     }
 
@@ -26,13 +24,13 @@ public class DivisionController {
     @Secured("CREATE_DIVISION")
     @ResponseStatus(HttpStatus.CREATED)
     public DivisionDto createDivision(@RequestBody @Valid CreateDivisionRequest request) {
-        return divisionMapper.mapToDto(divisionService.createDivision(request));
+        return divisionService.createDivision(request);
     }
 
     @GetMapping
     @Secured("VIEW_DIVISIONS")
     @ResponseStatus(HttpStatus.OK)
     public List<DivisionDto> getDivisions() {
-        return divisionMapper.mapToDto(divisionService.listAllDivisions());
+        return divisionService.listAllDivisions();
     }
 }

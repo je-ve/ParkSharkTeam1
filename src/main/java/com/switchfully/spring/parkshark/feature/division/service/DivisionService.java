@@ -1,5 +1,7 @@
 package com.switchfully.spring.parkshark.feature.division.service;
 
+import com.switchfully.spring.parkshark.feature.division.api.DivisionMapper;
+import com.switchfully.spring.parkshark.feature.division.api.dto.DivisionDto;
 import com.switchfully.spring.parkshark.feature.division.api.request.CreateDivisionRequest;
 import com.switchfully.spring.parkshark.feature.division.domain.Division;
 import com.switchfully.spring.parkshark.feature.division.domain.DivisionRepository;
@@ -12,18 +14,29 @@ import java.util.List;
 public class DivisionService {
 
     private final DivisionRepository divisionRepository;
+    private final DivisionMapper divisionMapper;
 
-    public DivisionService(DivisionRepository divisionRepository) {
+    public DivisionService(DivisionRepository divisionRepository, DivisionMapper divisionMapper) {
         this.divisionRepository = divisionRepository;
+        this.divisionMapper = divisionMapper;
     }
 
-    public Division createDivision(CreateDivisionRequest request) {
+    public DivisionDto createDivision(CreateDivisionRequest request) {
         if(divisionRepository.existsByName(request.name()))
             throw DivisionConflictException.duplicateDivisionException(request.name());
-        return divisionRepository.save(new Division(request.name(), request.originalName(), request.director()));
+        return divisionMapper.mapToDto(
+                divisionRepository.save(
+                        new Division(
+                                request.name(),
+                                request.originalName(),
+                                request.director())
+                )
+        );
     }
 
-    public List<Division> listAllDivisions() {
-        return divisionRepository.findAll();
+    public List<DivisionDto> listAllDivisions() {
+        return divisionMapper.mapToDto(
+                divisionRepository.findAll()
+        );
     }
 }
