@@ -6,7 +6,6 @@ import com.switchfully.spring.parkshark.feature.division.api.request.CreateDivis
 import com.switchfully.spring.parkshark.feature.division.service.DivisionService;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.annotation.Secured;
 import org.springframework.web.bind.annotation.*;
@@ -47,7 +46,7 @@ public class DivisionController {
     @Secured("VIEW_DIVISION")
     @ResponseStatus(HttpStatus.OK)
     @Operation(summary = "Get a division")
-    public DivisionOverviewDto createSubdivision(@PathVariable UUID id ) {
+    public DivisionOverviewDto getSubdivision(@PathVariable UUID id ) {
         return divisionService.getDivisionOverview(id);
     }
 
