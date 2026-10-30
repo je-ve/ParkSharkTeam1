@@ -44,20 +44,6 @@ class DivisionControllerTest {
     @DisplayName("Testing OK|CREATED")
     class TestingOkCreated {
         @Test
-        @WithMockUser(authorities = "CREATE_DIVISION")
-        void givenGoodCredentials_whenPostDivision_thenReturns201AndDto() throws Exception {
-            mockMvc.perform(post("/divisions")
-                            .with(csrf())
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content("""
-                                    {"name":"MyCompany","originalName":"MyOldCompany","director":"MyBoss"}
-                                    """))
-                    .andExpect(status().isCreated())
-                    .andExpect(jsonPath("$.id").isNotEmpty())
-                    .andExpect(jsonPath("$.name").value("MyCompany"));
-        }
-
-        @Test
         @WithMockUser(authorities = "VIEW_DIVISIONS")
         void givenGoodCredentials_whenGetAllDivisions_thenReturns200AndDto() throws Exception {
             createDivision("MyCompany");
@@ -67,7 +53,21 @@ class DivisionControllerTest {
                             .accept(MediaType.APPLICATION_JSON))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$").isArray())
-                    .andExpect(jsonPath("$", hasSize(3)));
+                    .andExpect(jsonPath("$", hasSize(4))); //4 because the create_division add an extra one
+        }
+
+        @Test
+        @WithMockUser(authorities = "CREATE_DIVISION")
+        void givenGoodCredentials_whenPostDivision_thenReturns201AndDto() throws Exception {
+            mockMvc.perform(post("/divisions")
+                            .with(csrf())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {"name":"MyOldCompany","originalName":"MyOldCompany","director":"MyBoss"}
+                                    """))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.id").isNotEmpty())
+                    .andExpect(jsonPath("$.name").value("MyOldCompany"));
         }
     }
 
@@ -83,6 +83,17 @@ class DivisionControllerTest {
                     .content("""
                             {"name":"MyCompany","originalName":"MyOldCompany","director":"MyBoss"}
                             """)).andReturn().getResponse();
+            assertThat(result.getStatus()).isEqualTo(403);
+            assertThat(HttpStatus.valueOf(result.getStatus())).isEqualTo(HttpStatus.FORBIDDEN);
+        }
+
+        @Test
+        @WithMockUser(authorities = "CREATE_THE_GREATER_DIVISION")
+        void givenWrongCredentials_whenGetAllDivisions_thenReturns403() throws Exception {
+            MockHttpServletResponse result = mockMvc.perform(get("/divisions")
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isForbidden()).andReturn().getResponse();
+
             assertThat(result.getStatus()).isEqualTo(403);
             assertThat(HttpStatus.valueOf(result.getStatus())).isEqualTo(HttpStatus.FORBIDDEN);
         }
@@ -102,5 +113,14 @@ class DivisionControllerTest {
             assertThat(result.getStatus()).isEqualTo(401);
             assertThat(HttpStatus.valueOf(result.getStatus())).isEqualTo(HttpStatus.UNAUTHORIZED);
         }
+    }
+
+    @Test
+    void givenNoCredentials_whenGetAllDivisions_thenReturns401() throws Exception {
+        MockHttpServletResponse result = mockMvc.perform(get("/divisions")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isUnauthorized()).andReturn().getResponse();
+        assertThat(result.getStatus()).isEqualTo(401);
+        assertThat(HttpStatus.valueOf(result.getStatus())).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 }
