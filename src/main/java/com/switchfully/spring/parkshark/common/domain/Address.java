@@ -11,7 +11,6 @@ public class Address {
     private String city;
 
     public Address(String streetName, String streetNumber, String postalCode, String city) {
-
         this.streetName = streetName;
         this.streetNumber = streetNumber;
         this.postalCode = postalCode;

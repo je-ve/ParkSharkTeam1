@@ -11,8 +11,8 @@ import java.time.LocalDate;
 
 @Component
 public class MemberMapper {
-    private AddressMapper addressMapper;
-    private LicensePlateMapper licensePlateMapper;
+    private final AddressMapper addressMapper;
+    private final LicensePlateMapper licensePlateMapper;
 
     public MemberMapper(AddressMapper addressMapper, LicensePlateMapper licensePlateMapper) {
         this.addressMapper = addressMapper;
@@ -33,17 +33,16 @@ public class MemberMapper {
         );
     }
 
-    public Member toMember(RegisterMemberRequest dto, Credentials credentials, LocalDate registrationDate) {
+    public Member toMember(RegisterMemberRequest request, Credentials credentials, LocalDate registrationDate) {
         return new Member(
-                dto.firstName(),
-                dto.lastName(),
-                addressMapper.toEntity(dto.address()),
-                dto.telephone(),
-                licensePlateMapper.toEntity(dto.licensePlate()),
+                request.firstName(),
+                request.lastName(),
+                addressMapper.toEntity(request.address()),
+                request.telephone(),
+                licensePlateMapper.toEntity(request.licensePlate()),
                 registrationDate,
-                dto.membershipLevel(),
+                request.membershipLevel(),
                 credentials
         );
     }
-
 }

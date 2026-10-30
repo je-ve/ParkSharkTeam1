@@ -17,10 +17,10 @@ import java.time.LocalDate;
 @Service
 @Transactional
 public class MemberService {
-    private MemberRepository memberRepository;
-    private MemberMapper memberMapper;
-    private CredentialsService credentialsService;
-    private Clock clock;
+    private final MemberRepository memberRepository;
+    private final MemberMapper memberMapper;
+    private final CredentialsService credentialsService;
+    private final Clock clock;
 
     public MemberService(MemberRepository memberRepository, MemberMapper memberMapper, CredentialsService credentialsService, Clock clock) {
         this.memberRepository = memberRepository;
@@ -29,12 +29,12 @@ public class MemberService {
         this.clock = clock;
     }
 
-    public MemberDto RegisterUser(RegisterMemberRequest registerMemberRequest) {
+    public MemberDto registerMember(RegisterMemberRequest request) {
         Credentials credentials = credentialsService.create(
-                registerMemberRequest.email(),
-                registerMemberRequest.password(),
+                request.email(),
+                request.password(),
                 Role.MEMBER);
-        Member createdMember = memberRepository.save(memberMapper.toMember(registerMemberRequest, credentials, LocalDate.now(clock)));
+        Member createdMember = memberRepository.save(memberMapper.toMember(request, credentials, LocalDate.now(clock)));
         return memberMapper.toDto(createdMember);
     }
 }
