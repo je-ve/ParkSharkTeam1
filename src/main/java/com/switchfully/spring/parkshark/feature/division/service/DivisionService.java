@@ -70,6 +70,30 @@ public class DivisionService {
     }
 
     @Transactional(readOnly = true)
+    public DivisionOverviewDto getDivisionOverview(UUID id) {
+        verifyParameterIsFilledIn(id.toString(), "ID");
+        if (!divisionRepository.existsById(id))
+            throw DivisionNotFoundException.divisionNotFoundException(id.toString());
+
+        Division division = divisionRepository.getById(id);
+
+        DivisionDto parent = null;
+        if (division.getParentId() != null && divisionRepository.existsById(division.getParentId()))
+            parent = divisionMapper.mapToDto(divisionRepository.getById(division.getParentId()));
+
+        List<DivisionDto> children = divisionMapper.mapToDto(divisionRepository.getAllByParentId(id));
+
+        return new DivisionOverviewDto(
+                division.getId(),
+                division.getName(),
+                division.getOriginalName(),
+                division.getDirector(),
+                parent,
+                children
+        );
+    }
+
+    @Transactional(readOnly = true)
     public List<DivisionDto> listAllDivisions() {
         return divisionMapper.mapToDto(
                 divisionRepository.findAll(Sort.by("name"))

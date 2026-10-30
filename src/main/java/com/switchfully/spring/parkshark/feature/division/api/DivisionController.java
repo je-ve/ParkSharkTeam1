@@ -43,6 +43,14 @@ public class DivisionController {
         return divisionService.createSubdivision(request, id);
     }
 
+    @GetMapping(value ="/{id}")
+    @Secured("VIEW_DIVISION")
+    @ResponseStatus(HttpStatus.OK)
+    @Operation(summary = "Get a division")
+    public DivisionOverviewDto createSubdivision(@PathVariable UUID id ) {
+        return divisionService.getDivisionOverview(id);
+    }
+
     @GetMapping
     @Secured("VIEW_DIVISIONS")
     @Operation(summary = "Get all divisions, sorted by name")
