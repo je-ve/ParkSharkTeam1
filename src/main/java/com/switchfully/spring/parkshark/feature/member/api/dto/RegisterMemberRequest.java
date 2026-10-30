@@ -9,7 +9,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
-public record RegisterMemberDto(
+public record RegisterMemberRequest(
         @NotBlank(message = "First name is required")
         @Size(max = 255, message = "First name must be at most 255 characters")
         @Schema(description = "First name", example = "John")

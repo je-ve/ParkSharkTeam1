@@ -2,14 +2,14 @@ package com.switchfully.spring.parkshark.feature.member.api;
 
 import com.switchfully.spring.parkshark.common.api.AddressMapper;
 import com.switchfully.spring.parkshark.feature.member.api.dto.MemberDto;
-import com.switchfully.spring.parkshark.feature.member.api.dto.RegisterMemberDto;
-import com.switchfully.spring.parkshark.feature.member.domain.LicensePlate;
+import com.switchfully.spring.parkshark.feature.member.api.dto.RegisterMemberRequest;
 import com.switchfully.spring.parkshark.feature.member.domain.Member;
-import com.switchfully.spring.parkshark.feature.member.domain.MemberRepository;
 import com.switchfully.spring.parkshark.feature.security.domain.Credentials;
+import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 
+@Component
 public class MemberMapper {
     private AddressMapper addressMapper;
     private LicensePlateMapper licensePlateMapper;
@@ -33,7 +33,7 @@ public class MemberMapper {
         );
     }
 
-    public Member toMember(RegisterMemberDto dto, Credentials credentials) {
+    public Member toMember(RegisterMemberRequest dto, Credentials credentials) {
         return new Member(
                 dto.firstName(),
                 dto.lastName(),

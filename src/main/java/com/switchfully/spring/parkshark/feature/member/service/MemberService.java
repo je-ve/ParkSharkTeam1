@@ -2,14 +2,15 @@ package com.switchfully.spring.parkshark.feature.member.service;
 
 import com.switchfully.spring.parkshark.feature.member.api.MemberMapper;
 import com.switchfully.spring.parkshark.feature.member.api.dto.MemberDto;
-import com.switchfully.spring.parkshark.feature.member.api.dto.RegisterMemberDto;
-import com.switchfully.spring.parkshark.feature.member.domain.Member;
+import com.switchfully.spring.parkshark.feature.member.api.dto.RegisterMemberRequest;
 import com.switchfully.spring.parkshark.feature.member.domain.MemberRepository;
 import com.switchfully.spring.parkshark.feature.security.domain.Credentials;
 import com.switchfully.spring.parkshark.feature.security.domain.Role;
 import com.switchfully.spring.parkshark.feature.security.service.CredentialsService;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Service
 @Transactional
 public class MemberService {
     private MemberRepository memberRepository;
@@ -22,7 +23,7 @@ public class MemberService {
         this.credentialsService = credentialsService;
     }
 
-    public MemberDto RegisterUser(RegisterMemberDto registerMemberDto) {
+    public MemberDto RegisterUser(RegisterMemberRequest registerMemberDto) {
         Credentials credentials = credentialsService.create(
                 registerMemberDto.email(),
                 registerMemberDto.password(),
