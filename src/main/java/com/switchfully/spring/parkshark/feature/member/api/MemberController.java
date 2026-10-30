@@ -1,7 +1,7 @@
 package com.switchfully.spring.parkshark.feature.member.api;
 
 import com.switchfully.spring.parkshark.feature.member.api.dto.MemberDto;
-import com.switchfully.spring.parkshark.feature.member.api.dto.RegisterMemberRequest;
+import com.switchfully.spring.parkshark.feature.member.api.request.RegisterMemberRequest;
 import com.switchfully.spring.parkshark.feature.member.service.MemberService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;

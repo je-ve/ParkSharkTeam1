@@ -1,6 +1,7 @@
-package com.switchfully.spring.parkshark.feature.member.api.dto;
+package com.switchfully.spring.parkshark.feature.member.api.request;
 
 import com.switchfully.spring.parkshark.common.api.dto.AddressDto;
+import com.switchfully.spring.parkshark.feature.member.api.dto.LicensePlateDto;
 import com.switchfully.spring.parkshark.feature.member.domain.MembershipLevel;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
