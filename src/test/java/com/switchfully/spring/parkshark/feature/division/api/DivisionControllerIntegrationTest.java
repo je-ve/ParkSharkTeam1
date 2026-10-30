@@ -1,5 +1,7 @@
 package com.switchfully.spring.parkshark.feature.division.api;
 
+import com.switchfully.spring.parkshark.feature.division.domain.DivisionRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -19,6 +21,14 @@ public class DivisionControllerIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    DivisionRepository divisionRepository;
+
+    @BeforeEach
+    void setUp() {
+        divisionRepository.deleteAll();
+    }
 
     @Test
     @WithMockUser(authorities = "CREATE_DIVISION")

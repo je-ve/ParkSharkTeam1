@@ -7,10 +7,12 @@ import com.switchfully.spring.parkshark.feature.division.domain.Division;
 import com.switchfully.spring.parkshark.feature.division.domain.DivisionRepository;
 import com.switchfully.spring.parkshark.feature.division.exception.DivisionConflictException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Service
+@Transactional
 public class DivisionService {
 
     private final DivisionRepository divisionRepository;
