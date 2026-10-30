@@ -24,6 +24,6 @@ public class DivisionService {
     }
 
     public List<Division> listAllDivisions() {
-        return divisionRepository.getAllBy();
+        return divisionRepository.findAll();
     }
 }
