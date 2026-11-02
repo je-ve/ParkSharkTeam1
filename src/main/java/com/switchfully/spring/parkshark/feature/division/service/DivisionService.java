@@ -9,7 +9,6 @@ import com.switchfully.spring.parkshark.feature.division.domain.DivisionReposito
 import com.switchfully.spring.parkshark.feature.division.exception.DivisionConflictException;
 import com.switchfully.spring.parkshark.feature.division.exception.DivisionNotFoundException;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.data.crossstore.ChangeSetPersister;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,8 +29,7 @@ public class DivisionService {
     }
 
     public DivisionDto createDivision(CreateDivisionRequest request) {
-        if (divisionRepository.existsByName(request.name()))
-            throw DivisionConflictException.duplicateDivisionException(request.name());
+        verifyDivisionNameIsUnique(request.name());
         try {
             Division division = divisionRepository.saveAndFlush(
                     new Division(
@@ -44,12 +42,29 @@ public class DivisionService {
         }
     }
 
+
+    public DivisionOverviewDto createSubdivision(CreateDivisionRequest request) {
+        verifyDivisionNameIsUnique(request.name());
+        try {
+            DivisionDto dto = createDivision(request);
+            return new DivisionOverviewDto(
+                    dto.id(), dto.name(),
+                    dto.originalName(),
+                    dto.director(),
+                    null,
+                    List.of()
+            );
+        } catch (DataIntegrityViolationException e) {
+            throw DivisionConflictException.duplicateDivisionException(request.name(), e);
+        }
+    }
+
+
     public DivisionOverviewDto createSubdivision(CreateDivisionRequest request, UUID parentId) {
         verifyParameterIsFilledIn(parentId.toString(), "ID");
-        if (!divisionRepository.existsById(parentId))
-            throw DivisionNotFoundException.divisionNotFoundException(parentId.toString());
-        if (divisionRepository.existsByName(request.name()))
-            throw DivisionConflictException.duplicateDivisionException(request.name());
+        verifyDivisionIdExists(parentId);
+        verifyDivisionNameIsUnique(request.name());
+
         try {
             Division division = divisionRepository.saveAndFlush(
                     new Division(
@@ -72,11 +87,9 @@ public class DivisionService {
     @Transactional(readOnly = true)
     public DivisionOverviewDto getDivisionOverview(UUID id) {
         verifyParameterIsFilledIn(id.toString(), "ID");
-        if (!divisionRepository.existsById(id))
-            throw DivisionNotFoundException.divisionNotFoundException(id.toString());
+        verifyDivisionIdExists(id);
 
         Division division = divisionRepository.getById(id);
-
         DivisionDto parent = null;
         if (division.getParentId() != null && divisionRepository.existsById(division.getParentId()))
             parent = divisionMapper.mapToDto(divisionRepository.getById(division.getParentId()));
@@ -100,7 +113,18 @@ public class DivisionService {
         );
     }
 
+
     private void verifyParameterIsFilledIn(String value, String parameterName) {
         if (value == null || value.isEmpty()) throw DivisionNotFoundException.divisionNotFoundException(parameterName);
+    }
+
+
+    private void verifyDivisionIdExists(UUID id) {
+        if (!divisionRepository.existsById(id)) throw DivisionNotFoundException.divisionNotFoundException(id.toString());
+    }
+
+
+    private void verifyDivisionNameIsUnique(String name) {
+        if (divisionRepository.existsByName(name)) throw DivisionConflictException.duplicateDivisionException(name);
     }
 }

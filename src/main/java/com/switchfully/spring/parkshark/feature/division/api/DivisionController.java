@@ -31,7 +31,17 @@ public class DivisionController {
         return divisionService.createDivision(request);
     }
 
-    @PostMapping(value ="/{id}")
+    @PostMapping(value ="/subdivisions")
+    @Secured("CREATE_SUBDIVISION")
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = "Create a subdivision")
+    public DivisionOverviewDto createSubdivision(
+            @RequestBody @Valid CreateDivisionRequest request
+    ) {
+        return divisionService.createSubdivision(request);
+    }
+
+    @PostMapping(value ="/subdivisions/{id}")
     @Secured("CREATE_SUBDIVISION")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Create a subdivision")
