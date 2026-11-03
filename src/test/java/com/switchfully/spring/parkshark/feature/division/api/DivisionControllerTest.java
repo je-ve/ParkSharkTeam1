@@ -29,9 +29,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class DivisionControllerTest {
 
-    private static final String SUBDIVISIONS_URL = "/divisions/subdivisions";
-    private static final String SUBDIVISIONS_WITH_PARENT_URL = "/divisions/subdivisions/{id}";
-
     @Autowired
     private MockMvc mockMvc;
 
@@ -57,7 +54,7 @@ class DivisionControllerTest {
     }
 
     private UUID createSubdivision(String name, UUID parentId) throws Exception {
-        String response = mockMvc.perform(post(SUBDIVISIONS_WITH_PARENT_URL, parentId)
+        String response = mockMvc.perform(post("/divisions/{id}", parentId)
                         .with(csrf())
                         .with(user("manager").authorities(new SimpleGrantedAuthority("CREATE_SUBDIVISION")))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -109,30 +106,12 @@ class DivisionControllerTest {
 
         @Test
         @WithMockUser(authorities = "CREATE_SUBDIVISION")
-        void givenNoParent_whenPostSubdivision_thenReturns201WithoutParent() throws Exception {
-            String name = uniqueName();
-
-            mockMvc.perform(post(SUBDIVISIONS_URL)
-                            .with(csrf())
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(division(name)))
-                    .andExpect(status().isCreated())
-                    .andExpect(jsonPath("$.id").isNotEmpty())
-                    .andExpect(jsonPath("$.name").value(name))
-                    .andExpect(jsonPath("$.originalName").value("MyOldCompany"))
-                    .andExpect(jsonPath("$.director").value("MyBoss"))
-                    .andExpect(jsonPath("$.parentDivision").doesNotExist())
-                    .andExpect(jsonPath("$.childrenDivisions").isEmpty());
-        }
-
-        @Test
-        @WithMockUser(authorities = "CREATE_SUBDIVISION")
         void givenAnExistingParent_whenPostSubdivision_thenReturns201WithTheParent() throws Exception {
             String parentName = uniqueName();
             UUID parentId = createDivision(parentName);
             String name = uniqueName();
 
-            mockMvc.perform(post(SUBDIVISIONS_WITH_PARENT_URL, parentId)
+            mockMvc.perform(post("/divisions/{id}", parentId)
                             .with(csrf())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(division(name)))
@@ -236,26 +215,10 @@ class DivisionControllerTest {
 
         @Test
         @WithMockUser(authorities = "CREATE_SUBDIVISION")
-        void givenBlankFields_whenPostSubdivisionWithoutParent_thenReturns400ListingEveryInvalidField() throws Exception {
-            mockMvc.perform(post(SUBDIVISIONS_URL)
-                            .with(csrf())
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content("""
-                                    {"name":"","originalName":"   "}
-                                    """))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.detail").value("Validation failed"))
-                    .andExpect(jsonPath("$.errors.name", hasItem("Name is required")))
-                    .andExpect(jsonPath("$.errors.originalName", hasItem("Original name is required")))
-                    .andExpect(jsonPath("$.errors.director", hasItem("Director is required")));
-        }
-
-        @Test
-        @WithMockUser(authorities = "CREATE_SUBDIVISION")
         void givenBlankFields_whenPostSubdivision_thenReturns400ListingEveryInvalidField() throws Exception {
             UUID parentId = createDivision(uniqueName());
 
-            mockMvc.perform(post(SUBDIVISIONS_WITH_PARENT_URL, parentId)
+            mockMvc.perform(post("/divisions/{id}", parentId)
                             .with(csrf())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
@@ -271,7 +234,7 @@ class DivisionControllerTest {
         @Test
         @WithMockUser(authorities = "CREATE_SUBDIVISION")
         void givenAnIdThatIsNotAUuid_whenPostSubdivision_thenReturns400() throws Exception {
-            mockMvc.perform(post(SUBDIVISIONS_WITH_PARENT_URL, "not-a-uuid")
+            mockMvc.perform(post("/divisions/{id}", "not-a-uuid")
                             .with(csrf())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(division(uniqueName())))
@@ -307,26 +270,12 @@ class DivisionControllerTest {
 
         @Test
         @WithMockUser(authorities = "CREATE_SUBDIVISION")
-        void givenAnExistingName_whenPostSubdivisionWithoutParent_thenReturns409() throws Exception {
-            String name = uniqueName();
-            createDivision(name);
-
-            mockMvc.perform(post(SUBDIVISIONS_URL)
-                            .with(csrf())
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(division(name)))
-                    .andExpect(status().isConflict())
-                    .andExpect(jsonPath("$.detail").value("Division %s already exists.".formatted(name)));
-        }
-
-        @Test
-        @WithMockUser(authorities = "CREATE_SUBDIVISION")
         void givenAnExistingName_whenPostSubdivision_thenReturns409() throws Exception {
             UUID parentId = createDivision(uniqueName());
             String name = uniqueName();
             createDivision(name);
 
-            mockMvc.perform(post(SUBDIVISIONS_WITH_PARENT_URL, parentId)
+            mockMvc.perform(post("/divisions/{id}", parentId)
                             .with(csrf())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(division(name)))
@@ -369,18 +318,8 @@ class DivisionControllerTest {
 
         @Test
         @WithMockUser(username = "member@parkshark.com")
-        void givenAMemberWithoutFeatures_whenPostSubdivisionWithoutParent_thenReturns403() throws Exception {
-            mockMvc.perform(post(SUBDIVISIONS_URL)
-                            .with(csrf())
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(division(uniqueName())))
-                    .andExpect(status().isForbidden());
-        }
-
-        @Test
-        @WithMockUser(username = "member@parkshark.com")
         void givenAMemberWithoutFeatures_whenPostSubdivision_thenReturns403() throws Exception {
-            mockMvc.perform(post(SUBDIVISIONS_WITH_PARENT_URL, UUID.randomUUID())
+            mockMvc.perform(post("/divisions/{id}", UUID.randomUUID())
                             .with(csrf())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(division(uniqueName())))
@@ -398,18 +337,8 @@ class DivisionControllerTest {
         // CREATE_DIVISION and CREATE_SUBDIVISION are two separate features
         @Test
         @WithMockUser(authorities = "CREATE_DIVISION")
-        void givenOnlyCreateDivision_whenPostSubdivisionWithoutParent_thenReturns403() throws Exception {
-            mockMvc.perform(post(SUBDIVISIONS_URL)
-                            .with(csrf())
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(division(uniqueName())))
-                    .andExpect(status().isForbidden());
-        }
-
-        @Test
-        @WithMockUser(authorities = "CREATE_DIVISION")
         void givenOnlyCreateDivision_whenPostSubdivision_thenReturns403() throws Exception {
-            mockMvc.perform(post(SUBDIVISIONS_WITH_PARENT_URL, UUID.randomUUID())
+            mockMvc.perform(post("/divisions/{id}", UUID.randomUUID())
                             .with(csrf())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(division(uniqueName())))
@@ -455,17 +384,8 @@ class DivisionControllerTest {
         }
 
         @Test
-        void givenNoCredentials_whenPostSubdivisionWithoutParent_thenReturns401() throws Exception {
-            mockMvc.perform(post(SUBDIVISIONS_URL)
-                            .with(csrf())
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(division(uniqueName())))
-                    .andExpect(status().isUnauthorized());
-        }
-
-        @Test
         void givenNoCredentials_whenPostSubdivision_thenReturns401() throws Exception {
-            mockMvc.perform(post(SUBDIVISIONS_WITH_PARENT_URL, UUID.randomUUID())
+            mockMvc.perform(post("/divisions/{id}", UUID.randomUUID())
                             .with(csrf())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(division(uniqueName())))
@@ -489,7 +409,7 @@ class DivisionControllerTest {
         void givenAnUnknownParent_whenPostSubdivision_thenReturns404() throws Exception {
             UUID unknownId = UUID.randomUUID();
 
-            mockMvc.perform(post(SUBDIVISIONS_WITH_PARENT_URL, unknownId)
+            mockMvc.perform(post("/divisions/{id}", unknownId)
                             .with(csrf())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(division(uniqueName())))
