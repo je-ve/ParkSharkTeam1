@@ -30,8 +30,7 @@ public class DivisionService {
     }
 
     public DivisionDto createDivision(CreateDivisionRequest request) {
-        if (divisionRepository.existsByName(request.name()))
-            throw DivisionConflictException.duplicateDivisionException(request.name());
+        verifyDivisionNameIsUnique(request.name());
         try {
             Division division = divisionRepository.saveAndFlush(
                     new Division(
@@ -46,10 +45,9 @@ public class DivisionService {
 
     public DivisionOverviewDto createSubdivision(CreateDivisionRequest request, UUID parentId) {
         verifyParameterIsFilledIn(parentId.toString(), "ID");
-        if (!divisionRepository.existsById(parentId))
-            throw DivisionNotFoundException.divisionNotFoundException(parentId.toString());
-        if (divisionRepository.existsByName(request.name()))
-            throw DivisionConflictException.duplicateDivisionException(request.name());
+        verifyDivisionIdExists(parentId);
+        verifyDivisionNameIsUnique(request.name());
+
         try {
             Division division = divisionRepository.saveAndFlush(
                     new Division(
@@ -72,8 +70,7 @@ public class DivisionService {
     @Transactional(readOnly = true)
     public DivisionOverviewDto getDivisionOverview(UUID id) {
         verifyParameterIsFilledIn(id.toString(), "ID");
-        if (!divisionRepository.existsById(id))
-            throw DivisionNotFoundException.divisionNotFoundException(id.toString());
+        verifyDivisionIdExists(id);
 
         Division division = divisionRepository.getById(id);
 
@@ -100,7 +97,18 @@ public class DivisionService {
         );
     }
 
+
     private void verifyParameterIsFilledIn(String value, String parameterName) {
         if (value == null || value.isEmpty()) throw DivisionNotFoundException.divisionNotFoundException(parameterName);
+    }
+
+
+    private void verifyDivisionIdExists(UUID id) {
+        if (!divisionRepository.existsById(id)) throw DivisionNotFoundException.divisionNotFoundException(id.toString());
+    }
+
+
+    private void verifyDivisionNameIsUnique(String name) {
+        if (divisionRepository.existsByName(name)) throw DivisionConflictException.duplicateDivisionException(name);
     }
 }
