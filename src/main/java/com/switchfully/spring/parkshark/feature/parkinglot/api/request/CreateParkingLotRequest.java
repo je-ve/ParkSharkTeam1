@@ -1,4 +1,5 @@
 package com.switchfully.spring.parkshark.feature.parkinglot.api.request;
+
 import com.switchfully.spring.parkshark.common.api.dto.AddressDto;
 import com.switchfully.spring.parkshark.feature.parkinglot.domain.Category;
 import io.swagger.v3.oas.annotations.media.Schema;
