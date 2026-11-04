@@ -36,7 +36,7 @@ public class AllocationController {
     @ResponseStatus(HttpStatus.OK)
     public AllocationDto stopAllocation(
             @AuthenticationPrincipal AuthenticatedUser user,
-            StopParkingAllocationRequest request) {
+            @Valid StopParkingAllocationRequest request) {
         return allocationService.stopAllocation(request, user.id());
     }
 }

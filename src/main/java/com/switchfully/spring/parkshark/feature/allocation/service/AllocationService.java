@@ -67,7 +67,7 @@ public class AllocationService {
         }
     }
 
-    public AllocationDto stopAllocation(StopParkingAllocationRequest request, UUID userId) {
+    public AllocationDto stopAllocation(StopParkingAllocationRequest request, UUID credentialsId) {
 
         Allocation allocation = allocationRepository.findById(request.allocationId())
                 .orElseThrow(() -> AllocationNotFoundException.allocationNotFoundException(request.allocationId()));
@@ -76,7 +76,7 @@ public class AllocationService {
             throw AllocationBadRequestException.wrongAllocationStatusException();
         }
 
-        if (!allocation.getMember().getId().equals(userId)) {
+        if (!allocation.getMember().getCredentials().getId().equals(credentialsId)) {
             throw AllocationBadRequestException.allocationMemberIdMismatchException();
         }
 
