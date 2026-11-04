@@ -1,6 +1,7 @@
 package com.switchfully.spring.parkshark.feature.parkinglot.domain;
 
 import com.switchfully.spring.parkshark.common.domain.Address;
+import com.switchfully.spring.parkshark.feature.security.domain.Credentials;
 import jakarta.persistence.*;
 
 import java.util.Objects;
@@ -28,7 +29,7 @@ public class ContactPerson {
         this.name = Objects.requireNonNull(name);
         this.mobilePhone = isBlank(mobilePhone) ? null : mobilePhone;
         this.telephoneNumber = isBlank(telephoneNumber) ? null : telephoneNumber;
-        this.email = Objects.requireNonNull(email);
+        this.email = Credentials.normalizeEmail(Objects.requireNonNull(email));
         this.address = Objects.requireNonNull(address);
     }
 
