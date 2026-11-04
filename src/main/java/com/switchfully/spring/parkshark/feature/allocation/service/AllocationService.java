@@ -11,6 +11,7 @@ import com.switchfully.spring.parkshark.feature.allocation.exception.AllocationC
 import com.switchfully.spring.parkshark.feature.allocation.api.AllocationMapper;
 import com.switchfully.spring.parkshark.feature.member.domain.Member;
 import com.switchfully.spring.parkshark.feature.member.domain.MemberRepository;
+import com.switchfully.spring.parkshark.feature.member.domain.MembershipLevel;
 import com.switchfully.spring.parkshark.feature.parkinglot.domain.ParkingLot;
 import com.switchfully.spring.parkshark.feature.parkinglot.domain.ParkingLotRepository;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -42,7 +43,7 @@ public class AllocationService {
     public CreatedAllocationDto createAllocation(StartingParkingAllocationRequest request, UUID credentialsId) {
         Member member = memberRepository.findByCredentialsId(credentialsId).orElseThrow(() -> new NotFoundException(credentialsId.toString()));
         ParkingLot parkingLot = parkingLotRepository.findById(request.parkingLotId()).orElseThrow(() -> new NotFoundException(request.parkingLotId().toString()));
-        if (!member.getLicensePlate().getNumber().equals(request.licencePlate()) && !member.getMembershipLevel().name().equals("GOLD")){
+        if (!member.getLicensePlate().getNumber().equals(request.licencePlate()) && member.getMembershipLevel() != MembershipLevel.GOLD){
             throw AllocationBadRequestException.wrongMembershipLevelException(member.getMembershipLevel().name());
         }
         if (parkingLot.getCapacity() <= allocationRepository.countByParkingLotIdAndStatus(request.parkingLotId(), AllocationStatus.ONGOING)) {
