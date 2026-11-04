@@ -1,11 +1,9 @@
 package com.switchfully.spring.parkshark.feature.allocation.domain;
 
-import com.switchfully.spring.parkshark.feature.member.domain.LicensePlate;
 import com.switchfully.spring.parkshark.feature.member.domain.Member;
 import com.switchfully.spring.parkshark.feature.parkinglot.domain.ParkingLot;
 import jakarta.persistence.*;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -21,6 +19,7 @@ public class Allocation {
 
     private LocalDateTime endTime;
 
+    @Enumerated(EnumType.STRING)
     private AllocationStatus status;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -38,6 +37,9 @@ public class Allocation {
         this.licensePlateNumber = licensePlateNumber;
         this.parkingLot = parkingLot;
         this.status = AllocationStatus.ONGOING;
+    }
+
+    protected Allocation() {
     }
 
     public UUID getId() {
