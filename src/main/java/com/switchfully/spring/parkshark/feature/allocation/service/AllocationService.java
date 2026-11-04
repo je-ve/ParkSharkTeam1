@@ -1,5 +1,6 @@
 package com.switchfully.spring.parkshark.feature.allocation.service;
 
+import com.switchfully.spring.parkshark.common.exception.NotFoundException;
 import com.switchfully.spring.parkshark.feature.allocation.api.dto.CreatedAllocationDto;
 import com.switchfully.spring.parkshark.feature.allocation.api.request.StartingParkingAllocationRequest;
 import com.switchfully.spring.parkshark.feature.allocation.domain.Allocation;
@@ -39,8 +40,8 @@ public class AllocationService {
     }
 
     public CreatedAllocationDto createAllocation(StartingParkingAllocationRequest request) {
-        Member member = memberRepository.findById(request.memberId()).orElseThrow();
-        ParkingLot parkingLot = parkingLotRepository.findById(request.parkingLotId()).orElseThrow();
+        Member member = memberRepository.findById(request.memberId()).orElseThrow(() -> new NotFoundException(request.memberId().toString()));
+        ParkingLot parkingLot = parkingLotRepository.findById(request.parkingLotId()).orElseThrow(() -> new NotFoundException(request.memberId().toString()));
         if (!member.getLicensePlate().getNumber().equals(request.licencePlate()) && !member.getMembershipLevel().name().equals("GOLD")){
             throw AllocationBadRequestException.wrongMembershipLevelException(member.getMembershipLevel().name());
         }
