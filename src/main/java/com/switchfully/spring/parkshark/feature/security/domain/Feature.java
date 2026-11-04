@@ -5,4 +5,6 @@ public enum Feature {
     CREATE_DIVISION,
     VIEW_DIVISIONS,
     VIEW_MEMBERS
+    CREATE_SUBDIVISION,
+    VIEW_DIVISION
 }
