@@ -30,6 +30,4 @@ public class Allocation {
     @ManyToOne(fetch = FetchType.LAZY)
     private ParkingLot parkingLot;
 
-
-
 }
