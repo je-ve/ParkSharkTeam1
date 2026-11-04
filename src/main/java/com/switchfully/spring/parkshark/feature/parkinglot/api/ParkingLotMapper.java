@@ -18,13 +18,11 @@ public class ParkingLotMapper {
 
     private final AddressMapper addressMapper;
     private final ContactPersonMapper contactPersonMapper;
-    private final ParkingLotMapper parkingLotMapper;
     private final DivisionMapper divisionMapper;
 
-    public ParkingLotMapper(AddressMapper addressMapper, ContactPersonMapper contactPersonMapper, ParkingLotMapper parkingLotMapper, DivisionMapper divisionMapper) {
+    public ParkingLotMapper(AddressMapper addressMapper, ContactPersonMapper contactPersonMapper, DivisionMapper divisionMapper) {
         this.addressMapper = addressMapper;
         this.contactPersonMapper = contactPersonMapper;
-        this.parkingLotMapper = parkingLotMapper;
         this.divisionMapper = divisionMapper;
     }
 
@@ -68,6 +66,7 @@ public class ParkingLotMapper {
                 parkingLot.getId(),
                 parkingLot.getName(),
                 parkingLot.getCapacity(),
+                parkingLot.getContactPerson().getEmail(),
                 parkingLot.getContactPerson().getMobilePhone(),
                 parkingLot.getContactPerson().getTelephoneNumber()
         );

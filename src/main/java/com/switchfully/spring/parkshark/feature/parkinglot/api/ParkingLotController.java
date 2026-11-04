@@ -43,7 +43,7 @@ public class ParkingLotController {
     @GetMapping(path="/{id}")
     @Secured("VIEW_PARKING_LOT")
     @ResponseStatus(HttpStatus.OK)
-    @Operation(summary = "View all parking lots existing contact person")
+    @Operation(summary = "View a parking lot with its division by id")
     public ParkingLotWithDivisionDto viewParkingLotWithDivisionById(@PathVariable UUID id) {
         return parkingLotService.getParkingLotWithContactAndDivisionById(id);
     }

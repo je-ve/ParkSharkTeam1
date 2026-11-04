@@ -3,6 +3,7 @@ package com.switchfully.spring.parkshark.feature.parkinglot.service;
 import com.switchfully.spring.parkshark.common.api.AddressMapper;
 import com.switchfully.spring.parkshark.common.api.dto.AddressDto;
 import com.switchfully.spring.parkshark.common.domain.Address;
+import com.switchfully.spring.parkshark.feature.division.api.DivisionMapper;
 import com.switchfully.spring.parkshark.feature.division.domain.Division;
 import com.switchfully.spring.parkshark.feature.division.service.DivisionService;
 import com.switchfully.spring.parkshark.feature.parkinglot.api.ContactPersonMapper;
@@ -52,9 +53,10 @@ class ParkingLotServiceTest {
     @BeforeEach
     void setUp() {
         AddressMapper addressMapper = new AddressMapper();
+        DivisionMapper divisionMapper = new DivisionMapper();
         ContactPersonMapper contactPersonMapper = new ContactPersonMapper(addressMapper);
         service = new ParkingLotService(parkingLotRepository, contactPersonRepository, divisionService,
-                new ParkingLotMapper(addressMapper, contactPersonMapper), contactPersonMapper);
+                new ParkingLotMapper(addressMapper, contactPersonMapper, divisionMapper), contactPersonMapper);
     }
 
     private static CreateContactPersonRequest newContact(String email) {

@@ -15,6 +15,7 @@ import com.switchfully.spring.parkshark.feature.parkinglot.domain.ParkingLot;
 import com.switchfully.spring.parkshark.feature.parkinglot.domain.ParkingLotRepository;
 import com.switchfully.spring.parkshark.feature.parkinglot.exception.ContactPersonConflictException;
 import com.switchfully.spring.parkshark.feature.parkinglot.exception.ContactPersonNotFoundException;
+import com.switchfully.spring.parkshark.feature.parkinglot.exception.ParkingLotNotFoundException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -72,11 +73,15 @@ public class ParkingLotService {
         }
     }
 
+    @Transactional(readOnly = true)
     public List<ParkingLotOverviewDto> getParkingLotsOverview() {
         return parkingLotMapper.toOverviewDto(parkingLotRepository.findAllWithContactPerson());
     }
 
+    @Transactional(readOnly = true)
     public ParkingLotWithDivisionDto getParkingLotWithContactAndDivisionById(UUID uuid) {
-        return parkingLotMapper.toWithDivisionDto(parkingLotRepository.findWithContactAndDivisionById(uuid));
+        return parkingLotMapper
+                .toWithDivisionDto(parkingLotRepository.findWithContactAndDivisionById(uuid)
+                        .orElseThrow(() -> new ParkingLotNotFoundException(uuid)));
     }
 }

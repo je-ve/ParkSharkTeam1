@@ -7,7 +7,8 @@ public record ParkingLotOverviewDto(
         UUID id,
         String name,
         int capacity,
-        String contact_mobile_phone,
-        String contact_telephone_number
+        String contactEmail,
+        String contactMobilePhone,
+        String contactTelephoneNumber
 ) {
 }
