@@ -8,20 +8,23 @@ import java.math.BigDecimal;
 import java.util.Objects;
 import java.util.UUID;
 
+@Entity
+@Table(name = "parking_lot")
 public class ParkingLot {
 // name, a category, a (max) capacity, a contact person, and an address
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    UUID id;
+    private UUID id;
     private String name;
     @Enumerated(EnumType.STRING)
     private Category category;
     private int capacity;
+    @Embedded
     private Address address;
     @Column(precision = 10, scale = 2)
     private BigDecimal pricePerHour;
-    @ManyToOne(fetch = FetchType.LAZY, optional = false, cascade = CascadeType.PERSIST)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "contact_person_id")
     private ContactPerson contactPerson;
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

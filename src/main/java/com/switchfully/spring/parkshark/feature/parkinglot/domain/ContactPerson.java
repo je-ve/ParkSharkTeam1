@@ -12,7 +12,7 @@ public class ContactPerson {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    UUID id;
+    private UUID id;
     private String name;
     private String mobilePhone;
     private String telephoneNumber;
@@ -32,7 +32,7 @@ public class ContactPerson {
         this.address = Objects.requireNonNull(address);
     }
 
-    public ContactPerson() {
+    protected ContactPerson() {
     }
 
     private static boolean isBlank(String value) {
