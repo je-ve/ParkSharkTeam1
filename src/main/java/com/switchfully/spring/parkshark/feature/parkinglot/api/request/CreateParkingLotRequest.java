@@ -1,14 +1,10 @@
-package com.switchfully.spring.parkshark.feature.parkingLot.api.request;
+package com.switchfully.spring.parkshark.feature.parkinglot.api.request;
 
 import com.switchfully.spring.parkshark.common.api.dto.AddressDto;
-import com.switchfully.spring.parkshark.common.domain.Address;
 import com.switchfully.spring.parkshark.feature.division.domain.Division;
-import com.switchfully.spring.parkshark.feature.parkingLot.domain.Category;
-import com.switchfully.spring.parkshark.feature.parkingLot.domain.ContactPerson;
-import jakarta.persistence.*;
+import com.switchfully.spring.parkshark.feature.parkinglot.domain.Category;
 
 import java.math.BigDecimal;
-import java.util.UUID;
 
 public class CreateParkingLotRequest {
 

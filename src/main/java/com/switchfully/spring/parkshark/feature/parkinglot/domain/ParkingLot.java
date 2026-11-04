@@ -1,4 +1,4 @@
-package com.switchfully.spring.parkshark.feature.parkingLot.domain;
+package com.switchfully.spring.parkshark.feature.parkinglot.domain;
 
 import com.switchfully.spring.parkshark.common.domain.Address;
 import com.switchfully.spring.parkshark.feature.division.domain.Division;

@@ -1,4 +1,4 @@
-package com.switchfully.spring.parkshark.feature.parkingLot.domain;
+package com.switchfully.spring.parkshark.feature.parkinglot.domain;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 

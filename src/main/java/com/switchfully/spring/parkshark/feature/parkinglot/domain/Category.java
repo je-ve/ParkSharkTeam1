@@ -1,4 +1,4 @@
-package com.switchfully.spring.parkshark.feature.parkingLot.domain;
+package com.switchfully.spring.parkshark.feature.parkinglot.domain;
 
 public enum Category {
     UNDERGROUND_BUILDING,

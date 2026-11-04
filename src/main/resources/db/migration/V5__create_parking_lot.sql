@@ -11,7 +11,7 @@ create table contact_person
     city             varchar(255) not null,
     constraint chk_contact_person_has_a_phone_number
         check (telephone_number is not null or mobile_phone is not null)
-)
+);
 
 create table parking_lot
 (
@@ -26,6 +26,6 @@ create table parking_lot
     price_per_hour    numeric(10, 2) not null,
     contact_person_id uuid           not null references contact_person (id),
     division_id       uuid           not null references division (id)
-)
+);
 
 
