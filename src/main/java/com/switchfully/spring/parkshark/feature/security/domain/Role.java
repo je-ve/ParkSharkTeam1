@@ -11,8 +11,9 @@ public enum Role {
             Feature.CREATE_PARKING_LOT,
             Feature.VIEW_MEMBERS,
             Feature.CREATE_SUBDIVISION,
-            Feature.VIEW_DIVISION)
-    ;
+            Feature.VIEW_DIVISION,
+            Feature.VIEW_PARKING_LOTS,
+            Feature.VIEW_PARKING_LOT);
 
     private final Set<Feature> features;
 
