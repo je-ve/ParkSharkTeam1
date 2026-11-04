@@ -1,14 +1,17 @@
 package com.switchfully.spring.parkshark.feature.allocation.service;
 
 import com.switchfully.spring.parkshark.common.exception.NotFoundException;
+import com.switchfully.spring.parkshark.feature.allocation.api.dto.AllocationDto;
 import com.switchfully.spring.parkshark.feature.allocation.api.dto.CreatedAllocationDto;
 import com.switchfully.spring.parkshark.feature.allocation.api.request.StartingParkingAllocationRequest;
+import com.switchfully.spring.parkshark.feature.allocation.api.request.StopParkingAllocationRequest;
 import com.switchfully.spring.parkshark.feature.allocation.domain.Allocation;
 import com.switchfully.spring.parkshark.feature.allocation.domain.AllocationRepository;
 import com.switchfully.spring.parkshark.feature.allocation.domain.AllocationStatus;
 import com.switchfully.spring.parkshark.feature.allocation.exception.AllocationBadRequestException;
 import com.switchfully.spring.parkshark.feature.allocation.exception.AllocationConflictException;
 import com.switchfully.spring.parkshark.feature.allocation.api.AllocationMapper;
+import com.switchfully.spring.parkshark.feature.allocation.exception.AllocationNotFoundException;
 import com.switchfully.spring.parkshark.feature.member.domain.Member;
 import com.switchfully.spring.parkshark.feature.member.domain.MemberRepository;
 import com.switchfully.spring.parkshark.feature.member.domain.MembershipLevel;
@@ -62,5 +65,24 @@ public class AllocationService {
         } catch (DataIntegrityViolationException e) {
             throw AllocationConflictException.parkingLotIsFullException(parkingLot.getId());
         }
+    }
+
+    public AllocationDto stopAllocation(StopParkingAllocationRequest request, UUID userId) {
+
+        Allocation allocation = allocationRepository.findById(request.allocationId())
+                .orElseThrow(() -> AllocationNotFoundException.allocationNotFoundException(request.allocationId()));
+
+        if (!allocation.getStatus().equals(AllocationStatus.ONGOING)) {
+            throw AllocationBadRequestException.wrongAllocationStatusException();
+        }
+
+        if (!allocation.getMember().getId().equals(userId)) {
+            throw AllocationBadRequestException.allocationMemberIdMismatchException();
+        }
+
+        allocation.setStatus(AllocationStatus.STOPPED);
+        allocation.setEndTime(LocalDateTime.now(clock));
+
+        return allocationMapper.toDto(allocationRepository.saveAndFlush(allocation));
     }
 }
