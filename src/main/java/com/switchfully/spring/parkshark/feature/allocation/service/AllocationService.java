@@ -41,7 +41,7 @@ public class AllocationService {
 
     public CreatedAllocationDto createAllocation(StartingParkingAllocationRequest request) {
         Member member = memberRepository.findById(request.memberId()).orElseThrow(() -> new NotFoundException(request.memberId().toString()));
-        ParkingLot parkingLot = parkingLotRepository.findById(request.parkingLotId()).orElseThrow(() -> new NotFoundException(request.memberId().toString()));
+        ParkingLot parkingLot = parkingLotRepository.findById(request.parkingLotId()).orElseThrow(() -> new NotFoundException(request.parkingLotId().toString()));
         if (!member.getLicensePlate().getNumber().equals(request.licencePlate()) && !member.getMembershipLevel().name().equals("GOLD")){
             throw AllocationBadRequestException.wrongMembershipLevelException(member.getMembershipLevel().name());
         }

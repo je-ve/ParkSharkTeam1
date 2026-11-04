@@ -9,11 +9,11 @@ public class AllocationConflictException extends ConflictException {
         super(message);
     }
 
-    public static AllocationBadRequestException parkingLotIsFullException(UUID id) {
-        return new AllocationBadRequestException(messageFor(id.toString()));
+    public static AllocationConflictException parkingLotIsFullException(UUID id) {
+        return new AllocationConflictException(messageFor(id.toString()));
     }
 
-    private static String messageFor(String divisionName) {
-        return "Parking lot %s is full.".formatted(divisionName);
+    private static String messageFor(String parkingLotId) {
+        return "Parking lot %s is full.".formatted(parkingLotId);
     }
 }

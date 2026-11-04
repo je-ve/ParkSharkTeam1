@@ -1,7 +1,6 @@
 package com.switchfully.spring.parkshark.feature.allocation.exception;
 
-
-public class AllocationBadRequestException extends RuntimeException {
+public class AllocationBadRequestException extends IllegalArgumentException {
     public AllocationBadRequestException(String message) {
         super(message);
     }
@@ -10,7 +9,7 @@ public class AllocationBadRequestException extends RuntimeException {
         return new AllocationBadRequestException(messageFor(membership));
     }
 
-    private static String messageFor(String divisionName) {
-        return "Membership level %s doesn't allow you to do that.".formatted(divisionName);
+    private static String messageFor(String membershipLevel) {
+        return "Membership level %s doesn't allow you to do that.".formatted(membershipLevel);
     }
 }
