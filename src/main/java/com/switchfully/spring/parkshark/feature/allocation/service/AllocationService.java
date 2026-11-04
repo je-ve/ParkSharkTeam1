@@ -8,8 +8,7 @@ import com.switchfully.spring.parkshark.feature.allocation.domain.AllocationRepo
 import com.switchfully.spring.parkshark.feature.allocation.domain.AllocationStatus;
 import com.switchfully.spring.parkshark.feature.allocation.exception.AllocationBadRequestException;
 import com.switchfully.spring.parkshark.feature.allocation.exception.AllocationConflictException;
-import com.switchfully.spring.parkshark.feature.division.api.AllocationMapper;
-import com.switchfully.spring.parkshark.feature.member.api.dto.MemberDetailsDto;
+import com.switchfully.spring.parkshark.feature.allocation.api.AllocationMapper;
 import com.switchfully.spring.parkshark.feature.member.domain.Member;
 import com.switchfully.spring.parkshark.feature.member.domain.MemberRepository;
 import com.switchfully.spring.parkshark.feature.parkinglot.domain.ParkingLot;

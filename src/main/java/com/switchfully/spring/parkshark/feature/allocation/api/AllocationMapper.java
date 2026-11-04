@@ -1,4 +1,4 @@
-package com.switchfully.spring.parkshark.feature.division.api;
+package com.switchfully.spring.parkshark.feature.allocation.api;
 
 import com.switchfully.spring.parkshark.feature.allocation.api.dto.CreatedAllocationDto;
 import com.switchfully.spring.parkshark.feature.allocation.domain.Allocation;
