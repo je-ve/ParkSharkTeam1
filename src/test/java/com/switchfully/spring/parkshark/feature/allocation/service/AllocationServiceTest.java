@@ -66,7 +66,7 @@ class AllocationServiceTest {
 
     private AllocationService service;
 
-    private final UUID memberId = UUID.randomUUID();
+    private final UUID credentialsId = UUID.randomUUID();
     private final UUID parkingLotId = UUID.randomUUID();
 
     @BeforeEach
@@ -89,11 +89,11 @@ class AllocationServiceTest {
     }
 
     private StartingParkingAllocationRequest request(String licencePlate) {
-        return new StartingParkingAllocationRequest(memberId, licencePlate, parkingLotId);
+        return new StartingParkingAllocationRequest(licencePlate, parkingLotId);
     }
 
     private void givenMemberAndParkingLot(Member member, ParkingLot parkingLot) {
-        when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
+        when(memberRepository.findByCredentialsId(credentialsId)).thenReturn(Optional.of(member));
         when(parkingLotRepository.findById(parkingLotId)).thenReturn(Optional.of(parkingLot));
     }
 
@@ -106,7 +106,7 @@ class AllocationServiceTest {
         when(allocationRepository.countByParkingLotIdAndStatus(parkingLotId, AllocationStatus.ONGOING)).thenReturn(1);
         when(allocationRepository.saveAndFlush(any(Allocation.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        CreatedAllocationDto dto = service.createAllocation(request(MEMBER_PLATE));
+        CreatedAllocationDto dto = service.createAllocation(request(MEMBER_PLATE), credentialsId);
 
         ArgumentCaptor<Allocation> saved = ArgumentCaptor.forClass(Allocation.class);
         verify(allocationRepository).saveAndFlush(saved.capture());
@@ -125,7 +125,7 @@ class AllocationServiceTest {
         when(allocationRepository.countByParkingLotIdAndStatus(parkingLotId, AllocationStatus.ONGOING)).thenReturn(0);
         when(allocationRepository.saveAndFlush(any(Allocation.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        service.createAllocation(request(MEMBER_PLATE));
+        service.createAllocation(request(MEMBER_PLATE), credentialsId);
 
         verify(allocationRepository).countByParkingLotIdAndStatus(parkingLotId, AllocationStatus.ONGOING);
     }
@@ -137,7 +137,7 @@ class AllocationServiceTest {
         when(allocationRepository.countByParkingLotIdAndStatus(parkingLotId, AllocationStatus.ONGOING)).thenReturn(0);
         when(allocationRepository.saveAndFlush(any(Allocation.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        service.createAllocation(request(OTHER_PLATE));
+        service.createAllocation(request(OTHER_PLATE), credentialsId);
 
         ArgumentCaptor<Allocation> saved = ArgumentCaptor.forClass(Allocation.class);
         verify(allocationRepository).saveAndFlush(saved.capture());
@@ -150,7 +150,7 @@ class AllocationServiceTest {
     void givenBronzeOrSilverMemberWithOtherPlate_whenCreateAllocation_thenThrowsBadRequestAndSavesNothing(MembershipLevel level) {
         givenMemberAndParkingLot(member(level), parkingLot(10));
 
-        assertThatThrownBy(() -> service.createAllocation(request(OTHER_PLATE)))
+        assertThatThrownBy(() -> service.createAllocation(request(OTHER_PLATE), credentialsId))
                 .isInstanceOf(AllocationBadRequestException.class)
                 .hasMessageContaining(level.name());
         verify(allocationRepository, never()).saveAndFlush(any());
@@ -159,21 +159,21 @@ class AllocationServiceTest {
     @DisplayName("An unknown member is rejected before anything else is looked up")
     @Test
     void givenUnknownMember_whenCreateAllocation_thenThrowsNotFoundAndSavesNothing() {
-        when(memberRepository.findById(memberId)).thenReturn(Optional.empty());
+        when(memberRepository.findByCredentialsId(credentialsId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.createAllocation(request(MEMBER_PLATE)))
+        assertThatThrownBy(() -> service.createAllocation(request(MEMBER_PLATE), credentialsId))
                 .isInstanceOf(NotFoundException.class)
-                .hasMessageContaining(memberId.toString());
+                .hasMessageContaining(credentialsId.toString());
         verify(allocationRepository, never()).saveAndFlush(any());
     }
 
     @DisplayName("An unknown parking lot is rejected and the message names the parking lot")
     @Test
     void givenUnknownParkingLot_whenCreateAllocation_thenThrowsNotFoundNamingTheParkingLot() {
-        when(memberRepository.findById(memberId)).thenReturn(Optional.of(member(MembershipLevel.BRONZE)));
+        when(memberRepository.findByCredentialsId(credentialsId)).thenReturn(Optional.of(member(MembershipLevel.BRONZE)));
         when(parkingLotRepository.findById(parkingLotId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.createAllocation(request(MEMBER_PLATE)))
+        assertThatThrownBy(() -> service.createAllocation(request(MEMBER_PLATE), credentialsId))
                 .isInstanceOf(NotFoundException.class)
                 .hasMessageContaining(parkingLotId.toString());
         verify(allocationRepository, never()).saveAndFlush(any());
@@ -185,7 +185,7 @@ class AllocationServiceTest {
         givenMemberAndParkingLot(member(MembershipLevel.BRONZE), parkingLot(2));
         when(allocationRepository.countByParkingLotIdAndStatus(parkingLotId, AllocationStatus.ONGOING)).thenReturn(2);
 
-        assertThatThrownBy(() -> service.createAllocation(request(MEMBER_PLATE)))
+        assertThatThrownBy(() -> service.createAllocation(request(MEMBER_PLATE), credentialsId))
                 .isInstanceOf(ConflictException.class)
                 .hasMessageContaining(parkingLotId.toString())
                 .hasMessageContaining("full");
@@ -198,7 +198,7 @@ class AllocationServiceTest {
         givenMemberAndParkingLot(member(MembershipLevel.BRONZE), parkingLot(2));
         when(allocationRepository.countByParkingLotIdAndStatus(parkingLotId, AllocationStatus.ONGOING)).thenReturn(3);
 
-        assertThatThrownBy(() -> service.createAllocation(request(MEMBER_PLATE)))
+        assertThatThrownBy(() -> service.createAllocation(request(MEMBER_PLATE), credentialsId))
                 .isInstanceOf(ConflictException.class);
         verify(allocationRepository, never()).saveAndFlush(any());
     }
@@ -211,8 +211,21 @@ class AllocationServiceTest {
         when(allocationRepository.saveAndFlush(any(Allocation.class)))
                 .thenThrow(new DataIntegrityViolationException("constraint"));
 
-        assertThatThrownBy(() -> service.createAllocation(request(MEMBER_PLATE)))
+        assertThatThrownBy(() -> service.createAllocation(request(MEMBER_PLATE), credentialsId))
                 .isInstanceOf(ConflictException.class)
                 .hasMessageContaining("full");
+    }
+
+    @DisplayName("The member is resolved from the logged-in user, never from the request")
+    @Test
+    void givenLoggedInUser_whenCreateAllocation_thenMemberIsLookedUpByTheirCredentialsId() {
+        givenMemberAndParkingLot(member(MembershipLevel.BRONZE), parkingLot(2));
+        when(allocationRepository.countByParkingLotIdAndStatus(parkingLotId, AllocationStatus.ONGOING)).thenReturn(0);
+        when(allocationRepository.saveAndFlush(any(Allocation.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.createAllocation(request(MEMBER_PLATE), credentialsId);
+
+        verify(memberRepository).findByCredentialsId(credentialsId);
+        verify(memberRepository, never()).findById(any());
     }
 }

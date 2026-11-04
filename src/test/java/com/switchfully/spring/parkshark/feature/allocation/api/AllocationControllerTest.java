@@ -1,5 +1,6 @@
 package com.switchfully.spring.parkshark.feature.allocation.api;
 
+import com.jayway.jsonpath.JsonPath;
 import com.switchfully.spring.parkshark.common.MutableClock;
 import com.switchfully.spring.parkshark.common.domain.Address;
 import com.switchfully.spring.parkshark.feature.allocation.domain.AllocationRepository;
@@ -15,6 +16,7 @@ import com.switchfully.spring.parkshark.feature.parkinglot.domain.ContactPerson;
 import com.switchfully.spring.parkshark.feature.parkinglot.domain.ContactPersonRepository;
 import com.switchfully.spring.parkshark.feature.parkinglot.domain.ParkingLot;
 import com.switchfully.spring.parkshark.feature.parkinglot.domain.ParkingLotRepository;
+import com.switchfully.spring.parkshark.feature.security.authentication.AuthenticatedUser;
 import com.switchfully.spring.parkshark.feature.security.domain.Credentials;
 import com.switchfully.spring.parkshark.feature.security.domain.CredentialsRepository;
 import com.switchfully.spring.parkshark.feature.security.domain.Role;
@@ -29,7 +31,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
@@ -37,10 +39,12 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.Locale;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -66,6 +70,8 @@ class AllocationControllerTest {
     @Autowired
     private MockMvc mockMvc;
     @Autowired
+    private JdbcTemplate jdbcTemplate;
+    @Autowired
     private CredentialsRepository credentialsRepository;
     @Autowired
     private MemberRepository memberRepository;
@@ -78,11 +84,14 @@ class AllocationControllerTest {
     @Autowired
     private AllocationRepository allocationRepository;
 
+    private Credentials saveCredentials(Role role) {
+        return credentialsRepository.save(
+                new Credentials(role.name().toLowerCase(Locale.ROOT) + "-" + UUID.randomUUID() + "@parkshark.be", "hash", role));
+    }
+
     private Member saveMember(MembershipLevel level) {
-        Credentials credentials = credentialsRepository.save(
-                new Credentials("member-" + UUID.randomUUID() + "@parkshark.be", "hash", Role.MEMBER));
         return memberRepository.save(new Member("John", "Doe", ADDRESS, "0258748582",
-                new LicensePlate(MEMBER_PLATE, "BE"), LocalDate.of(2026, 1, 1), level, credentials));
+                new LicensePlate(MEMBER_PLATE, "BE"), LocalDate.of(2026, 1, 1), level, saveCredentials(Role.MEMBER)));
     }
 
     private ParkingLot saveParkingLot(int capacity) {
@@ -94,21 +103,33 @@ class AllocationControllerTest {
                 capacity, contactPerson, ADDRESS, division, new BigDecimal("2.50")));
     }
 
-    private static String body(Object memberId, String licencePlate, Object parkingLotId) {
+    private static String body(String licencePlate, Object parkingLotId) {
         return """
-                {"memberId":"%s","licencePlate":"%s","parkingLotId":"%s"}""".formatted(memberId, licencePlate, parkingLotId);
+                {"licencePlate":"%s","parkingLotId":"%s"}""".formatted(licencePlate, parkingLotId);
     }
 
-    private ResultActions postAllocation(String json) throws Exception {
+    private ResultActions postAllocation(Credentials credentials, String json) throws Exception {
+        return mockMvc.perform(post("/allocations")
+                .with(user(AuthenticatedUser.from(credentials)))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json));
+    }
+
+    private ResultActions postAllocationWithoutCredentials(String json) throws Exception {
         return mockMvc.perform(post("/allocations")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json));
     }
 
+    private UUID memberOfAllocation(String allocationId) {
+        return jdbcTemplate.queryForObject("select member_id from allocation where id = ?",
+                UUID.class, UUID.fromString(allocationId));
+    }
+
     @Nested
     @DisplayName("Testing CREATED")
-    @WithMockUser(authorities = "START_ALLOCATION")
     class TestingCreated {
 
         @Test
@@ -116,7 +137,7 @@ class AllocationControllerTest {
             Member member = saveMember(MembershipLevel.BRONZE);
             ParkingLot parkingLot = saveParkingLot(10);
 
-            postAllocation(body(member.getId(), MEMBER_PLATE, parkingLot.getId()))
+            postAllocation(member.getCredentials(), body(MEMBER_PLATE, parkingLot.getId()))
                     .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.allocationId").isNotEmpty())
                     .andExpect(jsonPath("$.startTime").value("2026-01-01T09:00:00"));
@@ -127,7 +148,7 @@ class AllocationControllerTest {
             Member member = saveMember(MembershipLevel.GOLD);
             ParkingLot parkingLot = saveParkingLot(10);
 
-            postAllocation(body(member.getId(), OTHER_PLATE, parkingLot.getId()))
+            postAllocation(member.getCredentials(), body(OTHER_PLATE, parkingLot.getId()))
                     .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.allocationId").isNotEmpty());
         }
@@ -137,17 +158,46 @@ class AllocationControllerTest {
             Member member = saveMember(MembershipLevel.BRONZE);
             ParkingLot parkingLot = saveParkingLot(10);
 
-            postAllocation(body(member.getId(), MEMBER_PLATE, parkingLot.getId()))
+            postAllocation(member.getCredentials(), body(MEMBER_PLATE, parkingLot.getId()))
                     .andExpect(status().isCreated());
 
             assertThat(allocationRepository.countByParkingLotIdAndStatus(parkingLot.getId(), AllocationStatus.ONGOING))
                     .isEqualTo(1);
         }
+
+        @Test
+        void givenLoggedInMember_whenPostAllocation_thenAllocationBelongsToThatMember() throws Exception {
+            Member member = saveMember(MembershipLevel.BRONZE);
+            ParkingLot parkingLot = saveParkingLot(10);
+
+            String response = postAllocation(member.getCredentials(), body(MEMBER_PLATE, parkingLot.getId()))
+                    .andExpect(status().isCreated())
+                    .andReturn().getResponse().getContentAsString();
+
+            assertThat(memberOfAllocation(JsonPath.read(response, "$.allocationId"))).isEqualTo(member.getId());
+        }
+
+        @Test
+        void givenBodyWithAnotherMembersId_whenPostAllocation_thenAllocationIsStillStartedForTheLoggedInMember() throws Exception {
+            Member loggedIn = saveMember(MembershipLevel.BRONZE);
+            Member someoneElse = saveMember(MembershipLevel.BRONZE);
+            ParkingLot parkingLot = saveParkingLot(10);
+            String json = """
+                    {"memberId":"%s","licencePlate":"%s","parkingLotId":"%s"}"""
+                    .formatted(someoneElse.getId(), MEMBER_PLATE, parkingLot.getId());
+
+            String response = postAllocation(loggedIn.getCredentials(), json)
+                    .andExpect(status().isCreated())
+                    .andReturn().getResponse().getContentAsString();
+
+            assertThat(memberOfAllocation(JsonPath.read(response, "$.allocationId")))
+                    .isEqualTo(loggedIn.getId())
+                    .isNotEqualTo(someoneElse.getId());
+        }
     }
 
     @Nested
     @DisplayName("Testing BAD REQUEST")
-    @WithMockUser(authorities = "START_ALLOCATION")
     class TestingBadRequest {
 
         @Test
@@ -155,7 +205,7 @@ class AllocationControllerTest {
             Member member = saveMember(MembershipLevel.BRONZE);
             ParkingLot parkingLot = saveParkingLot(10);
 
-            postAllocation(body(member.getId(), OTHER_PLATE, parkingLot.getId()))
+            postAllocation(member.getCredentials(), body(OTHER_PLATE, parkingLot.getId()))
                     .andExpect(status().isBadRequest());
         }
 
@@ -164,7 +214,7 @@ class AllocationControllerTest {
             Member member = saveMember(MembershipLevel.SILVER);
             ParkingLot parkingLot = saveParkingLot(10);
 
-            postAllocation(body(member.getId(), OTHER_PLATE, parkingLot.getId()))
+            postAllocation(member.getCredentials(), body(OTHER_PLATE, parkingLot.getId()))
                     .andExpect(status().isBadRequest());
         }
 
@@ -173,7 +223,7 @@ class AllocationControllerTest {
             Member member = saveMember(MembershipLevel.BRONZE);
             ParkingLot parkingLot = saveParkingLot(10);
 
-            postAllocation(body(member.getId(), OTHER_PLATE, parkingLot.getId()))
+            postAllocation(member.getCredentials(), body(OTHER_PLATE, parkingLot.getId()))
                     .andExpect(status().isBadRequest());
 
             assertThat(allocationRepository.countByParkingLotIdAndStatus(parkingLot.getId(), AllocationStatus.ONGOING))
@@ -181,21 +231,12 @@ class AllocationControllerTest {
         }
 
         @Test
-        void givenNoMemberId_whenPostAllocation_thenReturns400() throws Exception {
-            ParkingLot parkingLot = saveParkingLot(10);
-
-            postAllocation("""
-                    {"licencePlate":"%s","parkingLotId":"%s"}""".formatted(MEMBER_PLATE, parkingLot.getId()))
-                    .andExpect(status().isBadRequest());
-        }
-
-        @Test
         void givenNoLicencePlate_whenPostAllocation_thenReturns400() throws Exception {
             Member member = saveMember(MembershipLevel.BRONZE);
             ParkingLot parkingLot = saveParkingLot(10);
 
-            postAllocation("""
-                    {"memberId":"%s","parkingLotId":"%s"}""".formatted(member.getId(), parkingLot.getId()))
+            postAllocation(member.getCredentials(), """
+                    {"parkingLotId":"%s"}""".formatted(parkingLot.getId()))
                     .andExpect(status().isBadRequest());
         }
 
@@ -204,7 +245,7 @@ class AllocationControllerTest {
             Member member = saveMember(MembershipLevel.BRONZE);
             ParkingLot parkingLot = saveParkingLot(10);
 
-            postAllocation(body(member.getId(), "  ", parkingLot.getId()))
+            postAllocation(member.getCredentials(), body("  ", parkingLot.getId()))
                     .andExpect(status().isBadRequest());
         }
 
@@ -212,70 +253,71 @@ class AllocationControllerTest {
         void givenNoParkingLotId_whenPostAllocation_thenReturns400() throws Exception {
             Member member = saveMember(MembershipLevel.BRONZE);
 
-            postAllocation("""
-                    {"memberId":"%s","licencePlate":"%s"}""".formatted(member.getId(), MEMBER_PLATE))
+            postAllocation(member.getCredentials(), """
+                    {"licencePlate":"%s"}""".formatted(MEMBER_PLATE))
                     .andExpect(status().isBadRequest());
         }
 
         @Test
-        void givenMalformedMemberId_whenPostAllocation_thenReturns400() throws Exception {
-            ParkingLot parkingLot = saveParkingLot(10);
+        void givenMalformedParkingLotId_whenPostAllocation_thenReturns400() throws Exception {
+            Member member = saveMember(MembershipLevel.BRONZE);
 
-            postAllocation(body("not-a-uuid", MEMBER_PLATE, parkingLot.getId()))
+            postAllocation(member.getCredentials(), body(MEMBER_PLATE, "not-a-uuid"))
                     .andExpect(status().isBadRequest());
         }
 
         @Test
         void givenEmptyBody_whenPostAllocation_thenReturns400() throws Exception {
-            postAllocation("")
+            Member member = saveMember(MembershipLevel.BRONZE);
+
+            postAllocation(member.getCredentials(), "")
                     .andExpect(status().isBadRequest());
         }
     }
 
     @Nested
     @DisplayName("Testing NOT FOUND")
-    @WithMockUser(authorities = "START_ALLOCATION")
     class TestingNotFound {
-
-        @Test
-        void givenUnknownMember_whenPostAllocation_thenReturns404() throws Exception {
-            ParkingLot parkingLot = saveParkingLot(10);
-
-            postAllocation(body(UUID.randomUUID(), MEMBER_PLATE, parkingLot.getId()))
-                    .andExpect(status().isNotFound());
-        }
 
         @Test
         void givenUnknownParkingLot_whenPostAllocation_thenReturns404() throws Exception {
             Member member = saveMember(MembershipLevel.BRONZE);
 
-            postAllocation(body(member.getId(), MEMBER_PLATE, UUID.randomUUID()))
+            postAllocation(member.getCredentials(), body(MEMBER_PLATE, UUID.randomUUID()))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        void givenLoggedInUserWithoutMemberRecord_whenPostAllocation_thenReturns404() throws Exception {
+            Credentials credentialsWithoutMember = saveCredentials(Role.MEMBER);
+            ParkingLot parkingLot = saveParkingLot(10);
+
+            postAllocation(credentialsWithoutMember, body(MEMBER_PLATE, parkingLot.getId()))
                     .andExpect(status().isNotFound());
         }
     }
 
     @Nested
     @DisplayName("Testing CONFLICT")
-    @WithMockUser(authorities = "START_ALLOCATION")
     class TestingConflict {
 
         @Test
         void givenFullParkingLot_whenPostAllocation_thenReturns409() throws Exception {
             ParkingLot parkingLot = saveParkingLot(1);
-            postAllocation(body(saveMember(MembershipLevel.BRONZE).getId(), MEMBER_PLATE, parkingLot.getId()))
+            postAllocation(saveMember(MembershipLevel.BRONZE).getCredentials(), body(MEMBER_PLATE, parkingLot.getId()))
                     .andExpect(status().isCreated());
 
-            postAllocation(body(saveMember(MembershipLevel.BRONZE).getId(), MEMBER_PLATE, parkingLot.getId()))
+            postAllocation(saveMember(MembershipLevel.BRONZE).getCredentials(), body(MEMBER_PLATE, parkingLot.getId()))
                     .andExpect(status().isConflict());
         }
 
         @Test
         void givenFullParkingLot_whenPostAllocation_thenNoExtraAllocationIsStored() throws Exception {
             ParkingLot parkingLot = saveParkingLot(1);
-            postAllocation(body(saveMember(MembershipLevel.BRONZE).getId(), MEMBER_PLATE, parkingLot.getId()))
+            postAllocation(saveMember(MembershipLevel.BRONZE).getCredentials(), body(MEMBER_PLATE, parkingLot.getId()))
                     .andExpect(status().isCreated());
 
-            postAllocation(body(saveMember(MembershipLevel.BRONZE).getId(), MEMBER_PLATE, parkingLot.getId()))
+            postAllocation(saveMember(MembershipLevel.BRONZE).getCredentials(), body(MEMBER_PLATE, parkingLot.getId()))
                     .andExpect(status().isConflict());
 
             assertThat(allocationRepository.countByParkingLotIdAndStatus(parkingLot.getId(), AllocationStatus.ONGOING))
@@ -285,10 +327,10 @@ class AllocationControllerTest {
         @Test
         void givenParkingLotWithOneSpotLeft_whenPostAllocation_thenReturns201() throws Exception {
             ParkingLot parkingLot = saveParkingLot(2);
-            postAllocation(body(saveMember(MembershipLevel.BRONZE).getId(), MEMBER_PLATE, parkingLot.getId()))
+            postAllocation(saveMember(MembershipLevel.BRONZE).getCredentials(), body(MEMBER_PLATE, parkingLot.getId()))
                     .andExpect(status().isCreated());
 
-            postAllocation(body(saveMember(MembershipLevel.BRONZE).getId(), MEMBER_PLATE, parkingLot.getId()))
+            postAllocation(saveMember(MembershipLevel.BRONZE).getCredentials(), body(MEMBER_PLATE, parkingLot.getId()))
                     .andExpect(status().isCreated());
         }
     }
@@ -299,14 +341,15 @@ class AllocationControllerTest {
 
         @Test
         void givenNoCredentials_whenPostAllocation_thenReturns401() throws Exception {
-            postAllocation(body(UUID.randomUUID(), MEMBER_PLATE, UUID.randomUUID()))
+            postAllocationWithoutCredentials(body(MEMBER_PLATE, UUID.randomUUID()))
                     .andExpect(status().isUnauthorized());
         }
 
         @Test
-        @WithMockUser(authorities = "CREATE_PARKING_LOT")
-        void givenUserWithoutStartAllocationFeature_whenPostAllocation_thenReturns403() throws Exception {
-            postAllocation(body(UUID.randomUUID(), MEMBER_PLATE, UUID.randomUUID()))
+        void givenManager_whenPostAllocation_thenReturns403() throws Exception {
+            Credentials manager = saveCredentials(Role.MANAGER);
+
+            postAllocation(manager, body(MEMBER_PLATE, UUID.randomUUID()))
                     .andExpect(status().isForbidden());
         }
     }
