@@ -9,7 +9,7 @@ import org.springframework.security.access.annotation.Secured;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("allocations")
+@RequestMapping("/allocations")
 public class AllocationController {
 
     private final AllocationService allocationService;
