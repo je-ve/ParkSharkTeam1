@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -39,8 +40,8 @@ public class AllocationService {
         this.clock = clock;
     }
 
-    public CreatedAllocationDto createAllocation(StartingParkingAllocationRequest request) {
-        Member member = memberRepository.findById(request.memberId()).orElseThrow(() -> new NotFoundException(request.memberId().toString()));
+    public CreatedAllocationDto createAllocation(StartingParkingAllocationRequest request, UUID userId) {
+        Member member = memberRepository.findById(userId).orElseThrow(() -> new NotFoundException(userId.toString()));
         ParkingLot parkingLot = parkingLotRepository.findById(request.parkingLotId()).orElseThrow(() -> new NotFoundException(request.parkingLotId().toString()));
         if (!member.getLicensePlate().getNumber().equals(request.licencePlate()) && !member.getMembershipLevel().name().equals("GOLD")){
             throw AllocationBadRequestException.wrongMembershipLevelException(member.getMembershipLevel().name());

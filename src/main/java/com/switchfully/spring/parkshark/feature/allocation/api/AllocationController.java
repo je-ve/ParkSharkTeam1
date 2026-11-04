@@ -3,9 +3,11 @@ package com.switchfully.spring.parkshark.feature.allocation.api;
 import com.switchfully.spring.parkshark.feature.allocation.api.dto.CreatedAllocationDto;
 import com.switchfully.spring.parkshark.feature.allocation.api.request.StartingParkingAllocationRequest;
 import com.switchfully.spring.parkshark.feature.allocation.service.AllocationService;
+import com.switchfully.spring.parkshark.feature.security.authentication.AuthenticatedUser;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.annotation.Secured;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -22,8 +24,8 @@ public class AllocationController {
     @Secured("START_ALLOCATION")
     @ResponseStatus(HttpStatus.CREATED)
     public CreatedAllocationDto createAllocation(
+            @AuthenticationPrincipal AuthenticatedUser user,
             @Valid @RequestBody StartingParkingAllocationRequest request) {
-        return allocationService.createAllocation(request);
+        return allocationService.createAllocation(request, user.id());
     }
-
 }

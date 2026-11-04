@@ -6,9 +6,6 @@ import jakarta.validation.constraints.NotNull;
 import java.util.UUID;
 
 public record StartingParkingAllocationRequest(
-        @NotNull(message = "Member ID is required")
-        UUID memberId,
-
         @NotBlank(message = "License plate is required")
         String licencePlate,
 
