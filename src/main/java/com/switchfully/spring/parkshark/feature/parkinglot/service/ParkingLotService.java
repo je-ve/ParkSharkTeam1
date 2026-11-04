@@ -1,7 +1,11 @@
 package com.switchfully.spring.parkshark.feature.parkinglot.service;
 
+import com.switchfully.spring.parkshark.common.exception.NotFoundException;
 import com.switchfully.spring.parkshark.feature.division.domain.Division;
 import com.switchfully.spring.parkshark.feature.division.service.DivisionService;
+import com.switchfully.spring.parkshark.feature.member.api.dto.MemberDetailsDto;
+import com.switchfully.spring.parkshark.feature.member.domain.Member;
+import com.switchfully.spring.parkshark.feature.member.exception.MemberNotFoundException;
 import com.switchfully.spring.parkshark.feature.parkinglot.api.ContactPersonMapper;
 import com.switchfully.spring.parkshark.feature.parkinglot.api.ParkingLotMapper;
 import com.switchfully.spring.parkshark.feature.parkinglot.api.dto.ParkingLotDto;
@@ -71,5 +75,17 @@ public class ParkingLotService {
         } catch (DataIntegrityViolationException e) {
             throw ContactPersonConflictException.emailAlreadyUsed(contactPerson.getEmail(), e);
         }
+    }
+
+    @Transactional(readOnly = true)
+    public List<ParkingLotOverviewDto> getParkingLotsOverview() {
+        return parkingLotMapper.toOverviewDto(parkingLotRepository.findAllWithContactPerson());
+    }
+
+    @Transactional(readOnly = true)
+    public ParkingLotWithDivisionDto getParkingLotWithContactAndDivisionById(UUID uuid) {
+        return parkingLotMapper
+                .toWithDivisionDto(parkingLotRepository.findWithContactAndDivisionById(uuid)
+                        .orElseThrow(() -> new ParkingLotNotFoundException(uuid)));
     }
 }
