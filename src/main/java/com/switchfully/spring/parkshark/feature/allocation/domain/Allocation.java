@@ -5,6 +5,7 @@ import com.switchfully.spring.parkshark.feature.member.domain.Member;
 import com.switchfully.spring.parkshark.feature.parkinglot.domain.ParkingLot;
 import jakarta.persistence.*;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -30,4 +31,40 @@ public class Allocation {
     @ManyToOne(fetch = FetchType.LAZY)
     private ParkingLot parkingLot;
 
+    public Allocation(LocalDateTime startTime, Member member, String licensePlateNumber, ParkingLot parkingLot) {
+        this.startTime = startTime;
+        this.endTime = null;
+        this.member = member;
+        this.licensePlateNumber = licensePlateNumber;
+        this.parkingLot = parkingLot;
+        this.status = AllocationStatus.ONGOING;
+    }
+
+    public UUID getId() {
+        return id;
+    }
+
+    public LocalDateTime getStartTime() {
+        return startTime;
+    }
+
+    public AllocationStatus getStatus() {
+        return status;
+    }
+
+    public LocalDateTime getEndTime() {
+        return endTime;
+    }
+
+    public Member getMember() {
+        return member;
+    }
+
+    public String getLicensePlateNumber() {
+        return licensePlateNumber;
+    }
+
+    public ParkingLot getParkingLot() {
+        return parkingLot;
+    }
 }
