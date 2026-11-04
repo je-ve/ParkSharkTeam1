@@ -1,6 +1,7 @@
 package com.switchfully.spring.parkshark.feature.member.api;
 
 import com.switchfully.spring.parkshark.common.api.AddressMapper;
+import com.switchfully.spring.parkshark.feature.member.api.dto.MemberDetailsDto;
 import com.switchfully.spring.parkshark.feature.member.api.dto.MemberDto;
 import com.switchfully.spring.parkshark.feature.member.api.request.RegisterMemberRequest;
 import com.switchfully.spring.parkshark.feature.member.domain.Member;
@@ -8,6 +9,7 @@ import com.switchfully.spring.parkshark.feature.security.domain.Credentials;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Component
 public class MemberMapper {
@@ -19,8 +21,8 @@ public class MemberMapper {
         this.licensePlateMapper = licensePlateMapper;
     }
 
-    public MemberDto toDto(Member member) {
-        return new MemberDto(
+    public MemberDetailsDto toDetailsDto(Member member) {
+        return new MemberDetailsDto(
                 member.getId(),
                 member.getFirstName(),
                 member.getLastName(),
@@ -31,6 +33,22 @@ public class MemberMapper {
                 member.getMembershipLevel(),
                 member.getCredentials().getEmail()
         );
+    }
+
+    public MemberDto toDto(Member member) {
+        return new MemberDto(
+                member.getId(),
+                member.getFirstName(),
+                member.getLastName(),
+                member.getLicensePlate().getNumber(),
+                member.getTelephone(),
+                member.getCredentials().getEmail(),
+                member.getRegistrationDate()
+        );
+    }
+
+    public List<MemberDto> toDto(List<Member> members) {
+        return members.stream().map(this::toDto).toList();
     }
 
     public Member toMember(RegisterMemberRequest request, Credentials credentials, LocalDate registrationDate) {
