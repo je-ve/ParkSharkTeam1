@@ -69,4 +69,12 @@ public class Allocation {
     public ParkingLot getParkingLot() {
         return parkingLot;
     }
+
+    public void setEndTime(LocalDateTime endTime) {
+        this.endTime = endTime;
+    }
+
+    public void setStatus(AllocationStatus status) {
+        this.status = status;
+    }
 }
