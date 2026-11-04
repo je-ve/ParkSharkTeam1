@@ -5,6 +5,8 @@ import com.switchfully.spring.parkshark.feature.division.service.DivisionService
 import com.switchfully.spring.parkshark.feature.parkinglot.api.ContactPersonMapper;
 import com.switchfully.spring.parkshark.feature.parkinglot.api.ParkingLotMapper;
 import com.switchfully.spring.parkshark.feature.parkinglot.api.dto.ParkingLotDto;
+import com.switchfully.spring.parkshark.feature.parkinglot.api.dto.ParkingLotOverviewDto;
+import com.switchfully.spring.parkshark.feature.parkinglot.api.dto.ParkingLotWithDivisionDto;
 import com.switchfully.spring.parkshark.feature.parkinglot.api.request.CreateContactPersonRequest;
 import com.switchfully.spring.parkshark.feature.parkinglot.api.request.CreateParkingLotRequest;
 import com.switchfully.spring.parkshark.feature.parkinglot.domain.ContactPerson;
@@ -13,10 +15,12 @@ import com.switchfully.spring.parkshark.feature.parkinglot.domain.ParkingLot;
 import com.switchfully.spring.parkshark.feature.parkinglot.domain.ParkingLotRepository;
 import com.switchfully.spring.parkshark.feature.parkinglot.exception.ContactPersonConflictException;
 import com.switchfully.spring.parkshark.feature.parkinglot.exception.ContactPersonNotFoundException;
+import com.switchfully.spring.parkshark.feature.parkinglot.exception.ParkingLotNotFoundException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
