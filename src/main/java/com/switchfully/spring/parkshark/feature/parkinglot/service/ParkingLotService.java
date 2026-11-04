@@ -44,7 +44,7 @@ public class ParkingLotService {
     public ParkingLotDto createParkingLot(CreateParkingLotRequest request) {
         Division division = divisionService.getDivisionById(request.divisionId());
         ContactPerson contactPerson = request.contactPersonId() != null
-                ? findContactPerson(request.contactPersonId())
+                ? getContactPerson(request.contactPersonId())
                 : createContactPerson(request.contactPerson());
 
         ParkingLot parkingLot = parkingLotRepository.save(
@@ -52,7 +52,7 @@ public class ParkingLotService {
         return parkingLotMapper.toDto(parkingLot);
     }
 
-    private ContactPerson findContactPerson(UUID id) {
+    private ContactPerson getContactPerson(UUID id) {
         return contactPersonRepository.findById(id)
                 .orElseThrow(() -> new ContactPersonNotFoundException(id));
     }

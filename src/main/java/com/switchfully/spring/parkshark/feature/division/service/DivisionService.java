@@ -114,6 +114,6 @@ public class DivisionService {
 
     public Division getDivisionById(UUID id) {
         return divisionRepository.findById(id)
-                .orElseThrow(() -> new DivisionNotFoundException(id.toString()));
+                .orElseThrow(() -> DivisionNotFoundException.divisionNotFoundException(id.toString()));
     }
 }
