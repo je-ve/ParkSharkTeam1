@@ -6,12 +6,14 @@ import com.switchfully.spring.parkshark.feature.division.api.request.CreateDivis
 import com.switchfully.spring.parkshark.feature.division.domain.Division;
 import com.switchfully.spring.parkshark.feature.division.domain.DivisionRepository;
 import com.switchfully.spring.parkshark.feature.division.exception.DivisionConflictException;
+import com.switchfully.spring.parkshark.feature.division.exception.DivisionNotFoundException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -45,5 +47,10 @@ public class DivisionService {
         return divisionMapper.mapToDto(
                 divisionRepository.findAll(Sort.by("name"))
         );
+    }
+
+    public Division getDivisionById(UUID id) {
+        return divisionRepository.findById(id)
+                .orElseThrow(() -> new DivisionNotFoundException(id));
     }
 }
