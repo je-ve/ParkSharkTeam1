@@ -111,4 +111,9 @@ public class DivisionService {
     private void verifyDivisionNameIsUnique(String name) {
         if (divisionRepository.existsByName(name)) throw DivisionConflictException.duplicateDivisionException(name);
     }
+
+    public Division getDivisionById(UUID id) {
+        return divisionRepository.findById(id)
+                .orElseThrow(() -> new DivisionNotFoundException(id.toString()));
+    }
 }
