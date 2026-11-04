@@ -8,10 +8,10 @@ import com.switchfully.spring.parkshark.feature.allocation.domain.AllocationRepo
 import com.switchfully.spring.parkshark.feature.allocation.domain.AllocationStatus;
 import com.switchfully.spring.parkshark.feature.allocation.exception.AllocationBadRequestException;
 import com.switchfully.spring.parkshark.feature.allocation.exception.AllocationConflictException;
-import com.switchfully.spring.parkshark.feature.division.api.AllocationMapper;
-import com.switchfully.spring.parkshark.feature.member.api.dto.MemberDetailsDto;
+import com.switchfully.spring.parkshark.feature.allocation.api.AllocationMapper;
 import com.switchfully.spring.parkshark.feature.member.domain.Member;
 import com.switchfully.spring.parkshark.feature.member.domain.MemberRepository;
+import com.switchfully.spring.parkshark.feature.member.domain.MembershipLevel;
 import com.switchfully.spring.parkshark.feature.parkinglot.domain.ParkingLot;
 import com.switchfully.spring.parkshark.feature.parkinglot.domain.ParkingLotRepository;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -39,10 +40,10 @@ public class AllocationService {
         this.clock = clock;
     }
 
-    public CreatedAllocationDto createAllocation(StartingParkingAllocationRequest request) {
-        Member member = memberRepository.findById(request.memberId()).orElseThrow(() -> new NotFoundException(request.memberId().toString()));
-        ParkingLot parkingLot = parkingLotRepository.findById(request.parkingLotId()).orElseThrow(() -> new NotFoundException(request.memberId().toString()));
-        if (!member.getLicensePlate().getNumber().equals(request.licencePlate()) && !member.getMembershipLevel().name().equals("GOLD")){
+    public CreatedAllocationDto createAllocation(StartingParkingAllocationRequest request, UUID credentialsId) {
+        Member member = memberRepository.findByCredentialsId(credentialsId).orElseThrow(() -> new NotFoundException(credentialsId.toString()));
+        ParkingLot parkingLot = parkingLotRepository.findById(request.parkingLotId()).orElseThrow(() -> new NotFoundException(request.parkingLotId().toString()));
+        if (!member.getLicensePlate().getNumber().equals(request.licencePlate()) && member.getMembershipLevel() != MembershipLevel.GOLD){
             throw AllocationBadRequestException.wrongMembershipLevelException(member.getMembershipLevel().name());
         }
         if (parkingLot.getCapacity() <= allocationRepository.countByParkingLotIdAndStatus(request.parkingLotId(), AllocationStatus.ONGOING)) {
