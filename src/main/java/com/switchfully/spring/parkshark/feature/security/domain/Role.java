@@ -8,7 +8,7 @@ public enum Role {
             Feature.CREATE_MEMBER,
             Feature.CREATE_DIVISION,
             Feature.VIEW_DIVISIONS,
-            Feature.VIEW_MEMBERS)
+            Feature.VIEW_MEMBERS,
             Feature.CREATE_SUBDIVISION,
             Feature.VIEW_DIVISION)
     ;
