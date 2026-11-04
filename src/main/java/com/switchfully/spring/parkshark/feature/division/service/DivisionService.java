@@ -9,7 +9,6 @@ import com.switchfully.spring.parkshark.feature.division.domain.DivisionReposito
 import com.switchfully.spring.parkshark.feature.division.exception.DivisionConflictException;
 import com.switchfully.spring.parkshark.feature.division.exception.DivisionNotFoundException;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.data.crossstore.ChangeSetPersister;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
