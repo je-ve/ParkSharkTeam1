@@ -16,6 +16,7 @@ import com.switchfully.spring.parkshark.feature.parkinglot.domain.ContactPersonR
 import com.switchfully.spring.parkshark.feature.parkinglot.domain.ParkingLot;
 import com.switchfully.spring.parkshark.feature.parkinglot.domain.ParkingLotRepository;
 import com.switchfully.spring.parkshark.feature.parkinglot.exception.ContactPersonConflictException;
+import com.switchfully.spring.parkshark.feature.parkinglot.exception.ParkingLotNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -25,6 +26,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -127,5 +129,58 @@ class ParkingLotServiceTest {
         assertThatThrownBy(() -> service.createParkingLot(request(null, newContact("jane@company.be"))))
                 .isInstanceOf(ContactPersonConflictException.class);
         verify(parkingLotRepository, never()).save(any());
+    }
+
+    @DisplayName("No parking lots gives an empty overview")
+    @Test
+    void givenNoParkingLots_whenGetOverview_thenReturnsEmptyList() {
+        when(parkingLotRepository.findAllWithContactPerson()).thenReturn(List.of());
+
+        assertThat(service.getParkingLotsOverview()).isEmpty();
+    }
+
+    @DisplayName("The overview only maps id, name, capacity and the contact details")
+    @Test
+    void givenParkingLot_whenGetOverview_thenMapsTheOverviewFields() {
+        ParkingLot parkingLot = new ParkingLot("Meir Underground", Category.UNDERGROUND_BUILDING, 250,
+                existingContact(), new Address("Meir", "1", "2000", "Antwerp"), division, new BigDecimal("2.50"));
+        when(parkingLotRepository.findAllWithContactPerson()).thenReturn(List.of(parkingLot));
+
+        var overview = service.getParkingLotsOverview();
+
+        assertThat(overview).singleElement().satisfies(dto -> {
+            assertThat(dto.name()).isEqualTo("Meir Underground");
+            assertThat(dto.capacity()).isEqualTo(250);
+            assertThat(dto.contactEmail()).isEqualTo("jane@company.be");
+            assertThat(dto.contactMobilePhone()).isEqualTo("+32 470 12 34 56");
+            assertThat(dto.contactTelephoneNumber()).isNull();
+        });
+    }
+
+    @DisplayName("Getting an unknown parking lot throws not found")
+    @Test
+    void givenUnknownId_whenGetParkingLot_thenThrowsNotFound() {
+        UUID id = UUID.randomUUID();
+        when(parkingLotRepository.findWithContactAndDivisionById(id)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.getParkingLotWithContactAndDivisionById(id))
+                .isInstanceOf(ParkingLotNotFoundException.class)
+                .hasMessageContaining(id.toString());
+    }
+
+    @DisplayName("Getting a parking lot includes its division")
+    @Test
+    void givenExistingId_whenGetParkingLot_thenReturnsItWithItsDivision() {
+        UUID id = UUID.randomUUID();
+        ParkingLot parkingLot = new ParkingLot("Meir Underground", Category.UNDERGROUND_BUILDING, 250,
+                existingContact(), new Address("Meir", "1", "2000", "Antwerp"), division, new BigDecimal("2.50"));
+        when(parkingLotRepository.findWithContactAndDivisionById(id)).thenReturn(Optional.of(parkingLot));
+
+        var dto = service.getParkingLotWithContactAndDivisionById(id);
+
+        assertThat(dto.name()).isEqualTo("Meir Underground");
+        assertThat(dto.contactPerson().email()).isEqualTo("jane@company.be");
+        assertThat(dto.division().name()).isEqualTo("MyCompany");
+        assertThat(dto.division().director()).isEqualTo("MyBoss");
     }
 }

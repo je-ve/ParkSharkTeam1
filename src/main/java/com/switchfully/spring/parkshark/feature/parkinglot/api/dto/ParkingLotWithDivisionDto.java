@@ -2,7 +2,6 @@ package com.switchfully.spring.parkshark.feature.parkinglot.api.dto;
 
 import com.switchfully.spring.parkshark.common.api.dto.AddressDto;
 import com.switchfully.spring.parkshark.feature.division.api.dto.DivisionDto;
-import com.switchfully.spring.parkshark.feature.division.domain.Division;
 import com.switchfully.spring.parkshark.feature.parkinglot.domain.Category;
 
 import java.math.BigDecimal;
@@ -16,5 +15,5 @@ public record ParkingLotWithDivisionDto(
         AddressDto address,
         BigDecimal pricePerHour,
         ContactPersonDto contactPerson,
-        DivisionDto divisionDto) {
+        DivisionDto division) {
 }
