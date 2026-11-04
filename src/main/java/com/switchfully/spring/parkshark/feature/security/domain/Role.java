@@ -3,7 +3,7 @@ package com.switchfully.spring.parkshark.feature.security.domain;
 import java.util.Set;
 
 public enum Role {
-    MEMBER,
+    MEMBER(Feature.START_ALLOCATION),
     MANAGER(
             Feature.CREATE_MEMBER,
             Feature.CREATE_DIVISION,
