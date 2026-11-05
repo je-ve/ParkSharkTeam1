@@ -44,7 +44,7 @@ public class DivisionService {
 
     public DivisionOverviewDto createSubdivision(CreateDivisionRequest request, UUID parentId) {
         verifyParameterIsFilledIn(parentId.toString(), "ID");
-        verifyDivisionIdExists(parentId);
+        Division parent = getDivisionById(parentId);
         verifyDivisionNameIsUnique(request.name());
 
         try {
@@ -58,7 +58,7 @@ public class DivisionService {
             );
             return divisionMapper.mapToDto(
                     division,
-                    divisionRepository.getById(parentId),
+                    parent,
                     List.of()
             );
         } catch (DataIntegrityViolationException e) {
@@ -69,23 +69,19 @@ public class DivisionService {
     @Transactional(readOnly = true)
     public DivisionOverviewDto getDivisionOverview(UUID id) {
         verifyParameterIsFilledIn(id.toString(), "ID");
-        verifyDivisionIdExists(id);
 
-        Division division = divisionRepository.getById(id);
-
-        DivisionDto parent = null;
-        if (division.getParentId() != null && divisionRepository.existsById(division.getParentId()))
-            parent = divisionMapper.mapToDto(divisionRepository.getById(division.getParentId()));
-
-        List<DivisionDto> children = divisionMapper.mapToDto(divisionRepository.getAllByParentId(id));
+        Division division = getDivisionById(id);
+        DivisionDto parentDto = division.getParentId() == null ?
+                null : divisionMapper.mapToDto(getDivisionById(division.getParentId()));
+        List<DivisionDto> childrenDto = divisionMapper.mapToDto(divisionRepository.getAllByParentId(id));
 
         return new DivisionOverviewDto(
                 division.getId(),
                 division.getName(),
                 division.getOriginalName(),
                 division.getDirector(),
-                parent,
-                children
+                parentDto,
+                childrenDto
         );
     }
 
@@ -102,14 +98,10 @@ public class DivisionService {
     }
 
 
-    private void verifyDivisionIdExists(UUID id) {
-        if (!divisionRepository.existsById(id)) throw DivisionNotFoundException.divisionNotFoundException(id.toString());
-    }
-
-
     private void verifyDivisionNameIsUnique(String name) {
         if (divisionRepository.existsByName(name)) throw DivisionConflictException.duplicateDivisionException(name);
     }
+
 
     public Division getDivisionById(UUID id) {
         return divisionRepository.findById(id)

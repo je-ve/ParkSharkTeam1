@@ -7,10 +7,5 @@ import java.util.UUID;
 
     public interface DivisionRepository extends JpaRepository<Division, UUID> {
     boolean existsByName(String name);
-
-    boolean existsById(UUID id);
-
-    Division getById(UUID id);
-
     List<Division> getAllByParentId(UUID parentId);
 }
