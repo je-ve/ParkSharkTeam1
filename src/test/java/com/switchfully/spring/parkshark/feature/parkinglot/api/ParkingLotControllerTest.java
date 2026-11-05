@@ -88,7 +88,9 @@ class ParkingLotControllerTest {
                     .andExpect(jsonPath("$.capacity").value(250))
                     .andExpect(jsonPath("$.pricePerHour").value(2.5))
                     .andExpect(jsonPath("$.address.city").value("Antwerp"))
-                    .andExpect(jsonPath("$.divisionId").value(divisionId.toString()))
+                    .andExpect(jsonPath("$.division.id").value(divisionId.toString()))
+                    .andExpect(jsonPath("$.division.name").isNotEmpty())
+                    .andExpect(jsonPath("$.division.director").value("Boss"))
                     .andExpect(jsonPath("$.contactPerson.id").isNotEmpty())
                     .andExpect(jsonPath("$.contactPerson.name").value("Jane Doe"))
                     .andExpect(jsonPath("$.contactPerson.email").value(email));
@@ -111,6 +113,30 @@ class ParkingLotControllerTest {
     @DisplayName("Testing BAD REQUEST")
     @WithMockUser(authorities = "CREATE_PARKING_LOT")
     class TestingBadRequest {
+
+        @Test
+        void givenEmptyBody_whenPostParkingLot_thenReturns400ListingEveryInvalidField() throws Exception {
+            postParkingLot("{}")
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.errors.name").exists())
+                    .andExpect(jsonPath("$.errors.category").exists())
+                    .andExpect(jsonPath("$.errors.capacity").exists())
+                    .andExpect(jsonPath("$.errors.address").exists())
+                    .andExpect(jsonPath("$.errors.pricePerHour").exists())
+                    .andExpect(jsonPath("$.errors.divisionId").exists())
+                    .andExpect(jsonPath("$.errors.exactlyOneContactPersonGiven").exists());
+        }
+
+        @Test
+        void givenInvalidContactEmailAndNegativePrice_whenPostParkingLot_thenReturns400NamingBothFields() throws Exception {
+            String json = parkingLot(divisionId, newContact("not-an-email"))
+                    .replace("\"pricePerHour\":2.50", "\"pricePerHour\":-1");
+
+            postParkingLot(json)
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.errors['contactPerson.email']").exists())
+                    .andExpect(jsonPath("$.errors.pricePerHour").exists());
+        }
 
         @Test
         void givenBothContactIdAndNewContact_whenPostParkingLot_thenReturns400() throws Exception {

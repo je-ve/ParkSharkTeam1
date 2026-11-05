@@ -3,7 +3,6 @@ package com.switchfully.spring.parkshark.feature.parkinglot.api;
 import com.switchfully.spring.parkshark.common.api.AddressMapper;
 import com.switchfully.spring.parkshark.feature.division.api.DivisionMapper;
 import com.switchfully.spring.parkshark.feature.division.domain.Division;
-import com.switchfully.spring.parkshark.feature.parkinglot.api.dto.ParkingLotDto;
 import com.switchfully.spring.parkshark.feature.parkinglot.api.dto.ParkingLotOverviewDto;
 import com.switchfully.spring.parkshark.feature.parkinglot.api.dto.ParkingLotWithDivisionDto;
 import com.switchfully.spring.parkshark.feature.parkinglot.api.request.CreateParkingLotRequest;
@@ -35,18 +34,6 @@ public class ParkingLotMapper {
                 addressMapper.toEntity(request.address()),
                 division,
                 request.pricePerHour());
-    }
-
-    public ParkingLotDto toDto(ParkingLot parkingLot) {
-        return new ParkingLotDto(
-                parkingLot.getId(),
-                parkingLot.getName(),
-                parkingLot.getCategory(),
-                parkingLot.getCapacity(),
-                addressMapper.toDto(parkingLot.getAddress()),
-                parkingLot.getPricePerHour(),
-                contactPersonMapper.toDto(parkingLot.getContactPerson()),
-                parkingLot.getDivision().getId());
     }
 
     public ParkingLotWithDivisionDto toWithDivisionDto(ParkingLot parkingLot) {
