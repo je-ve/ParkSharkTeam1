@@ -16,4 +16,6 @@ public class AllocationConflictException extends ConflictException {
     private static String messageFor(String parkingLotId) {
         return "Parking lot %s is full.".formatted(parkingLotId);
     }
+
+
 }

@@ -5,6 +5,7 @@ import java.util.Set;
 public enum Role {
     MEMBER(
             Feature.START_ALLOCATION,
+            Feature.STOP_ALLOCATION,
             Feature.GET_MONTHLY_INVOICE),
     MANAGER(
             Feature.CREATE_MEMBER,

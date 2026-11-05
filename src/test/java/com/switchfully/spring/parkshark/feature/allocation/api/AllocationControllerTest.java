@@ -3,6 +3,7 @@ package com.switchfully.spring.parkshark.feature.allocation.api;
 import com.jayway.jsonpath.JsonPath;
 import com.switchfully.spring.parkshark.common.MutableClock;
 import com.switchfully.spring.parkshark.common.domain.Address;
+import com.switchfully.spring.parkshark.feature.allocation.domain.Allocation;
 import com.switchfully.spring.parkshark.feature.allocation.domain.AllocationRepository;
 import com.switchfully.spring.parkshark.feature.allocation.domain.AllocationStatus;
 import com.switchfully.spring.parkshark.feature.division.domain.Division;
@@ -20,6 +21,7 @@ import com.switchfully.spring.parkshark.feature.security.authentication.Authenti
 import com.switchfully.spring.parkshark.feature.security.domain.Credentials;
 import com.switchfully.spring.parkshark.feature.security.domain.CredentialsRepository;
 import com.switchfully.spring.parkshark.feature.security.domain.Role;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -37,6 +39,7 @@ import org.springframework.test.web.servlet.ResultActions;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Locale;
@@ -46,6 +49,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -57,18 +61,21 @@ class AllocationControllerTest {
     private static final Address ADDRESS = new Address("Meir", "1", "2000", "Antwerp");
     private static final String MEMBER_PLATE = "1-ABC-123";
     private static final String OTHER_PLATE = "2-XYZ-999";
+    private static final ZonedDateTime NOW = ZonedDateTime.of(2026, 1, 1, 9, 0, 0, 0, ZoneId.of("Europe/Brussels"));
 
     @TestConfiguration
     static class TestClockConfig {
         @Bean
         @Primary
         MutableClock testClock() {
-            return new MutableClock(ZonedDateTime.of(2026, 1, 1, 9, 0, 0, 0, ZoneId.of("Europe/Brussels")));
+            return new MutableClock(NOW);
         }
     }
 
     @Autowired
     private MockMvc mockMvc;
+    @Autowired
+    private MutableClock clock;
     @Autowired
     private JdbcTemplate jdbcTemplate;
     @Autowired
@@ -83,6 +90,11 @@ class AllocationControllerTest {
     private ParkingLotRepository parkingLotRepository;
     @Autowired
     private AllocationRepository allocationRepository;
+
+    @BeforeEach
+    void resetClock() {
+        clock.setTo(NOW);
+    }
 
     private Credentials saveCredentials(Role role) {
         return credentialsRepository.save(
@@ -121,6 +133,38 @@ class AllocationControllerTest {
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json));
+    }
+
+    private Allocation saveOngoingAllocation(Member member, ParkingLot parkingLot) {
+        return allocationRepository.save(
+                new Allocation(LocalDateTime.of(2026, 1, 1, 8, 0), member, MEMBER_PLATE, parkingLot));
+    }
+
+    private ResultActions putStopAllocation(Credentials credentials, Object allocationId) throws Exception {
+        return mockMvc.perform(put("/allocations")
+                .param("allocationId", String.valueOf(allocationId))
+                .with(user(AuthenticatedUser.from(credentials)))
+                .with(csrf()));
+    }
+
+    private ResultActions putStopAllocationWithoutId(Credentials credentials) throws Exception {
+        return mockMvc.perform(put("/allocations")
+                .with(user(AuthenticatedUser.from(credentials)))
+                .with(csrf()));
+    }
+
+    private ResultActions putStopAllocationWithoutCredentials(Object allocationId) throws Exception {
+        return mockMvc.perform(put("/allocations")
+                .param("allocationId", String.valueOf(allocationId))
+                .with(csrf()));
+    }
+
+    private String statusOf(UUID allocationId) {
+        return jdbcTemplate.queryForObject("select status from allocation where id = ?", String.class, allocationId);
+    }
+
+    private LocalDateTime endTimeOf(UUID allocationId) {
+        return jdbcTemplate.queryForObject("select end_time from allocation where id = ?", LocalDateTime.class, allocationId);
     }
 
     private UUID memberOfAllocation(String allocationId) {
@@ -350,6 +394,133 @@ class AllocationControllerTest {
             Credentials manager = saveCredentials(Role.MANAGER);
 
             postAllocation(manager, body(MEMBER_PLATE, UUID.randomUUID()))
+                    .andExpect(status().isForbidden());
+        }
+    }
+
+    @Nested
+    @DisplayName("Testing STOPPED")
+    class TestingStopped {
+
+        @Test
+        void givenOwnerOfOngoingAllocation_whenPutStopAllocation_thenReturns200WithStoppedAllocation() throws Exception {
+            Member member = saveMember(MembershipLevel.BRONZE);
+            Allocation allocation = saveOngoingAllocation(member, saveParkingLot(10));
+
+            putStopAllocation(member.getCredentials(), allocation.getId())
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(allocation.getId().toString()))
+                    .andExpect(jsonPath("$.startTime").value("2026-01-01T08:00:00"))
+                    .andExpect(jsonPath("$.stopTime").value("2026-01-01T09:00:00"))
+                    .andExpect(jsonPath("$.licensePlateNumber").value(MEMBER_PLATE))
+                    .andExpect(jsonPath("$.status").value("STOPPED"));
+        }
+
+        @Test
+        void givenOwnerOfOngoingAllocation_whenPutStopAllocation_thenStatusAndStopTimeAreStored() throws Exception {
+            Member member = saveMember(MembershipLevel.BRONZE);
+            Allocation allocation = saveOngoingAllocation(member, saveParkingLot(10));
+
+            putStopAllocation(member.getCredentials(), allocation.getId())
+                    .andExpect(status().isOk());
+
+            assertThat(statusOf(allocation.getId())).isEqualTo("STOPPED");
+            assertThat(endTimeOf(allocation.getId())).isEqualTo(LocalDateTime.of(2026, 1, 1, 9, 0));
+        }
+
+        @Test
+        void givenFullParkingLot_whenTheOwnerStopsTheirAllocation_thenTheSpotIsFreeAgain() throws Exception {
+            ParkingLot parkingLot = saveParkingLot(1);
+            Member parked = saveMember(MembershipLevel.BRONZE);
+            Member waiting = saveMember(MembershipLevel.BRONZE);
+            Allocation allocation = saveOngoingAllocation(parked, parkingLot);
+            postAllocation(waiting.getCredentials(), body(MEMBER_PLATE, parkingLot.getId()))
+                    .andExpect(status().isConflict());
+
+            putStopAllocation(parked.getCredentials(), allocation.getId())
+                    .andExpect(status().isOk());
+
+            postAllocation(waiting.getCredentials(), body(MEMBER_PLATE, parkingLot.getId()))
+                    .andExpect(status().isCreated());
+        }
+    }
+
+    @Nested
+    @DisplayName("Testing STOP BAD REQUEST")
+    class TestingStopBadRequest {
+
+        @Test
+        void givenAllocationOfAnotherMember_whenPutStopAllocation_thenReturns400AndAllocationStaysOngoing() throws Exception {
+            Member owner = saveMember(MembershipLevel.BRONZE);
+            Member someoneElse = saveMember(MembershipLevel.BRONZE);
+            Allocation allocation = saveOngoingAllocation(owner, saveParkingLot(10));
+
+            putStopAllocation(someoneElse.getCredentials(), allocation.getId())
+                    .andExpect(status().isBadRequest());
+
+            assertThat(statusOf(allocation.getId())).isEqualTo("ONGOING");
+            assertThat(endTimeOf(allocation.getId())).isNull();
+        }
+
+        @Test
+        void givenAlreadyStoppedAllocation_whenPutStopAllocation_thenReturns400AndStopTimeIsUnchanged() throws Exception {
+            Member member = saveMember(MembershipLevel.BRONZE);
+            Allocation allocation = saveOngoingAllocation(member, saveParkingLot(10));
+            putStopAllocation(member.getCredentials(), allocation.getId())
+                    .andExpect(status().isOk());
+            clock.setTo(NOW.plusHours(1));
+
+            putStopAllocation(member.getCredentials(), allocation.getId())
+                    .andExpect(status().isBadRequest());
+
+            assertThat(endTimeOf(allocation.getId())).isEqualTo(LocalDateTime.of(2026, 1, 1, 9, 0));
+        }
+
+        @Test
+        void givenNoAllocationId_whenPutStopAllocation_thenReturns400() throws Exception {
+            Member member = saveMember(MembershipLevel.BRONZE);
+
+            putStopAllocationWithoutId(member.getCredentials())
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        void givenMalformedAllocationId_whenPutStopAllocation_thenReturns400() throws Exception {
+            Member member = saveMember(MembershipLevel.BRONZE);
+
+            putStopAllocation(member.getCredentials(), "not-a-uuid")
+                    .andExpect(status().isBadRequest());
+        }
+    }
+
+    @Nested
+    @DisplayName("Testing STOP NOT FOUND")
+    class TestingStopNotFound {
+
+        @Test
+        void givenUnknownAllocation_whenPutStopAllocation_thenReturns404() throws Exception {
+            Member member = saveMember(MembershipLevel.BRONZE);
+
+            putStopAllocation(member.getCredentials(), UUID.randomUUID())
+                    .andExpect(status().isNotFound());
+        }
+    }
+
+    @Nested
+    @DisplayName("Testing STOP UNAUTHORIZED|FORBIDDEN")
+    class TestingStopSecurity {
+
+        @Test
+        void givenNoCredentials_whenPutStopAllocation_thenReturns401() throws Exception {
+            putStopAllocationWithoutCredentials(UUID.randomUUID())
+                    .andExpect(status().isUnauthorized());
+        }
+
+        @Test
+        void givenManager_whenPutStopAllocation_thenReturns403() throws Exception {
+            Credentials manager = saveCredentials(Role.MANAGER);
+
+            putStopAllocation(manager, UUID.randomUUID())
                     .andExpect(status().isForbidden());
         }
     }
