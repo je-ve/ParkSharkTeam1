@@ -4,6 +4,7 @@ import com.switchfully.spring.parkshark.feature.member.domain.Member;
 import com.switchfully.spring.parkshark.feature.parkinglot.domain.ParkingLot;
 import jakarta.persistence.*;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -68,6 +69,11 @@ public class Allocation {
 
     public ParkingLot getParkingLot() {
         return parkingLot;
+    }
+
+    public void stop(Clock clock) {
+        setStatus(AllocationStatus.STOPPED);
+        setEndTime(LocalDateTime.now(clock));
     }
 
     public void setEndTime(LocalDateTime endTime) {

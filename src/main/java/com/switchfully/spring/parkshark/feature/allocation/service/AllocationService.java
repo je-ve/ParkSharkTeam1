@@ -44,14 +44,12 @@ public class AllocationService {
     }
 
     public CreatedAllocationDto createAllocation(StartingParkingAllocationRequest request, UUID credentialsId) {
-        Member member = memberRepository.findByCredentialsId(credentialsId).orElseThrow(() -> new NotFoundException(credentialsId.toString()));
-        ParkingLot parkingLot = parkingLotRepository.findById(request.parkingLotId()).orElseThrow(() -> new NotFoundException(request.parkingLotId().toString()));
-        if (!member.getLicensePlate().getNumber().equals(request.licencePlate()) && member.getMembershipLevel() != MembershipLevel.GOLD){
-            throw AllocationBadRequestException.wrongMembershipLevelException(member.getMembershipLevel().name());
-        }
-        if (parkingLot.getCapacity() <= allocationRepository.countByParkingLotIdAndStatus(request.parkingLotId(), AllocationStatus.ONGOING)) {
-            throw AllocationConflictException.parkingLotIsFullException(parkingLot.getId());
-        }
+        Member member = getMemberByCredentialsId(credentialsId);
+        ParkingLot parkingLot = getParkingLotById(request.parkingLotId());
+
+        verifyLicencePlateMatchesMember(member, request.licencePlate());
+        verifyParkingLotCapacity(parkingLot);
+
         try {
             Allocation allocation = allocationRepository.saveAndFlush(
                     new Allocation(
@@ -69,20 +67,49 @@ public class AllocationService {
 
     public AllocationDto stopAllocation(StopParkingAllocationRequest request, UUID credentialsId) {
 
-        Allocation allocation = allocationRepository.findById(request.allocationId())
-                .orElseThrow(() -> AllocationNotFoundException.allocationNotFoundException(request.allocationId()));
+        Allocation allocation = getAllocationById(request.allocationId());
 
-        if (!allocation.getStatus().equals(AllocationStatus.ONGOING)) {
-            throw AllocationBadRequestException.wrongAllocationStatusException();
-        }
+        verifyAllocationStatusIsNotStopped(allocation);
+        verifyAllocationBelongsTo(allocation, credentialsId);
 
-        if (!allocation.getMember().getCredentials().getId().equals(credentialsId)) {
-            throw AllocationBadRequestException.allocationMemberIdMismatchException();
-        }
-
-        allocation.setStatus(AllocationStatus.STOPPED);
-        allocation.setEndTime(LocalDateTime.now(clock));
-
+        allocation.stop(clock);
         return allocationMapper.toDto(allocationRepository.saveAndFlush(allocation));
+    }
+
+
+    private void verifyLicencePlateMatchesMember(Member member, String licencePlate) {
+        if (!member.getLicensePlate().getNumber().equals(licencePlate) && member.getMembershipLevel() != MembershipLevel.GOLD)
+            throw AllocationBadRequestException.wrongMembershipLevelException(member.getMembershipLevel().name());
+    }
+
+
+    private void verifyParkingLotCapacity(ParkingLot parkingLot) {
+        if (parkingLot.getCapacity() <= allocationRepository.countByParkingLotIdAndStatus(parkingLot.getId(), AllocationStatus.ONGOING))
+            throw AllocationConflictException.parkingLotIsFullException(parkingLot.getId());
+    }
+
+
+    private Member getMemberByCredentialsId(UUID credentialsId) {
+        return memberRepository.findByCredentialsId(credentialsId).orElseThrow(() -> new NotFoundException(credentialsId.toString()));
+    }
+
+
+    private ParkingLot getParkingLotById(UUID parkingLotId) {
+        return parkingLotRepository.findById(parkingLotId).orElseThrow(() -> new NotFoundException(parkingLotId.toString()));
+    }
+
+
+    private Allocation getAllocationById(UUID allocationId) {
+        return allocationRepository.findById(allocationId).orElseThrow(() -> AllocationNotFoundException.allocationNotFoundException(allocationId));
+    }
+
+
+    private void verifyAllocationStatusIsNotStopped(Allocation allocation) {
+        if (!allocation.getStatus().equals(AllocationStatus.ONGOING)) throw AllocationBadRequestException.wrongAllocationStatusException();
+    }
+
+
+    private void verifyAllocationBelongsTo(Allocation allocation, UUID credentialsId) {
+        if (!allocation.getMember().getCredentials().getId().equals(credentialsId)) throw AllocationBadRequestException.allocationMemberIdMismatchException();
     }
 }

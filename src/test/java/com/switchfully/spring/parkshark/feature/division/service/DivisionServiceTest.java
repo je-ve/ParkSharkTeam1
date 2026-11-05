@@ -19,6 +19,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Sort;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -106,10 +107,9 @@ class DivisionServiceTest {
         UUID parentId = UUID.randomUUID();
         Division parent = new Division("Parent", "OldParent", "ParentBoss");
         CreateDivisionRequest request = new CreateDivisionRequest("Sub", "OldSub", "SubBoss");
-        when(repository.existsById(parentId)).thenReturn(true);
+        when(repository.findById(parentId)).thenReturn(Optional.of(parent));
         when(repository.existsByName("Sub")).thenReturn(false);
         when(repository.saveAndFlush(any(Division.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(repository.getById(parentId)).thenReturn(parent);
 
         DivisionOverviewDto overview = service.createSubdivision(request, parentId);
 
@@ -129,7 +129,7 @@ class DivisionServiceTest {
     void givenAnUnknownParent_whenCallingCreateSubdivision_thenANotFoundExceptionIsThrown() {
         UUID parentId = UUID.randomUUID();
         CreateDivisionRequest request = new CreateDivisionRequest("Sub", "OldSub", "SubBoss");
-        when(repository.existsById(parentId)).thenReturn(false);
+        when(repository.findById(parentId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.createSubdivision(request, parentId))
                 .isInstanceOf(DivisionNotFoundException.class)
@@ -143,7 +143,7 @@ class DivisionServiceTest {
     void givenDuplicateName_whenCallingCreateSubdivision_thenAConflictIsThrown() {
         UUID parentId = UUID.randomUUID();
         CreateDivisionRequest request = new CreateDivisionRequest("Sub", "OldSub", "SubBoss");
-        when(repository.existsById(parentId)).thenReturn(true);
+        when(repository.findById(parentId)).thenReturn(Optional.of(new Division("Parent", "OldParent", "ParentBoss")));
         when(repository.existsByName("Sub")).thenReturn(true);
 
         assertThatThrownBy(() -> service.createSubdivision(request, parentId))
@@ -158,7 +158,7 @@ class DivisionServiceTest {
     void givenTheSameNameSavedConcurrently_whenCallingCreateSubdivision_thenAConflictIsThrown() {
         UUID parentId = UUID.randomUUID();
         CreateDivisionRequest request = new CreateDivisionRequest("Sub", "OldSub", "SubBoss");
-        when(repository.existsById(parentId)).thenReturn(true);
+        when(repository.findById(parentId)).thenReturn(Optional.of(new Division("Parent", "OldParent", "ParentBoss")));
         when(repository.existsByName("Sub")).thenReturn(false);
         when(repository.saveAndFlush(any(Division.class))).thenThrow(new DataIntegrityViolationException("unique constraint"));
 
@@ -173,7 +173,7 @@ class DivisionServiceTest {
     @Test
     void givenAnUnknownId_whenCallingGetDivisionOverview_thenANotFoundExceptionIsThrown() {
         UUID id = UUID.randomUUID();
-        when(repository.existsById(id)).thenReturn(false);
+        when(repository.findById(id)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.getDivisionOverview(id))
                 .isInstanceOf(DivisionNotFoundException.class)
@@ -184,8 +184,7 @@ class DivisionServiceTest {
     @Test
     void givenATopLevelDivision_whenCallingGetDivisionOverview_thenParentIsNullAndChildrenAreReturned() {
         UUID id = UUID.randomUUID();
-        when(repository.existsById(id)).thenReturn(true);
-        when(repository.getById(id)).thenReturn(new Division("Top", "OldTop", "TopBoss"));
+        when(repository.findById(id)).thenReturn(Optional.of(new Division("Top", "OldTop", "TopBoss")));
         when(repository.getAllByParentId(id)).thenReturn(List.of(
                 new Division("ChildA", "OldChildA", "BossA", id),
                 new Division("ChildB", "OldChildB", "BossB", id)));
@@ -204,10 +203,8 @@ class DivisionServiceTest {
     void givenASubdivision_whenCallingGetDivisionOverview_thenItsParentIsReturned() {
         UUID id = UUID.randomUUID();
         UUID parentId = UUID.randomUUID();
-        when(repository.existsById(id)).thenReturn(true);
-        when(repository.getById(id)).thenReturn(new Division("Sub", "OldSub", "SubBoss", parentId));
-        when(repository.existsById(parentId)).thenReturn(true);
-        when(repository.getById(parentId)).thenReturn(new Division("Parent", "OldParent", "ParentBoss"));
+        when(repository.findById(id)).thenReturn(Optional.of(new Division("Sub", "OldSub", "SubBoss", parentId)));
+        when(repository.findById(parentId)).thenReturn(Optional.of(new Division("Parent", "OldParent", "ParentBoss")));
         when(repository.getAllByParentId(id)).thenReturn(List.of());
 
         DivisionOverviewDto overview = service.getDivisionOverview(id);

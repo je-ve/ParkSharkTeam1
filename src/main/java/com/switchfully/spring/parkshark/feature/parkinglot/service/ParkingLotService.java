@@ -67,9 +67,8 @@ public class ParkingLotService {
 
     private ContactPerson createContactPerson(CreateContactPersonRequest request) {
         ContactPerson contactPerson = contactPersonMapper.toEntity(request);
-        contactPersonRepository.findByEmail(contactPerson.getEmail()).ifPresent(existing -> {
-            throw ContactPersonConflictException.emailAlreadyUsed(existing.getEmail(), existing.getId());
-        });
+        verifyEmailDoesNotExist(contactPerson.getEmail());
+
         try {
             return contactPersonRepository.saveAndFlush(contactPerson);
         } catch (DataIntegrityViolationException e) {
@@ -87,5 +86,12 @@ public class ParkingLotService {
         return parkingLotMapper
                 .toWithDivisionDto(parkingLotRepository.findWithContactAndDivisionById(uuid)
                         .orElseThrow(() -> new ParkingLotNotFoundException(uuid)));
+    }
+
+
+    void verifyEmailDoesNotExist(String email) {
+        contactPersonRepository.findByEmail(email).ifPresent(existing -> {
+            throw ContactPersonConflictException.emailAlreadyUsed(existing.getEmail(), existing.getId());
+        });
     }
 }
