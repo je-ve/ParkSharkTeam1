@@ -1,6 +1,7 @@
 package com.switchfully.spring.parkshark.common.api;
 
 import com.switchfully.spring.parkshark.common.exception.ConflictException;
+import com.switchfully.spring.parkshark.common.exception.ForbiddenException;
 import com.switchfully.spring.parkshark.common.exception.NotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,6 +61,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, e.getMessage());
     }
 
+    @ExceptionHandler(ForbiddenException.class)
+    public ProblemDetail handleForbidden(ForbiddenException e) {
+        log.warn("Forbidden: {}", e.getMessage());
+        return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, e.getMessage());
+    }
+
     @ExceptionHandler(OptimisticLockingFailureException.class)
     public ProblemDetail handleConcurrentModification(OptimisticLockingFailureException e) {
         log.warn("Concurrent modification: {}", e.getMessage());
@@ -104,7 +111,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         errors.values().forEach(Collections::sort);
         ProblemDetail body = ProblemDetail.forStatusAndDetail(status, "Validation failed");
         body.setProperty("errors", errors);
-        return handleExceptionInternal(e, body, headers, status, request);
+        // Only the field names: the exception message contains the rejected values, passwords included.
+        log.warn("{} Validation failed on {}", status.value(), errors.keySet());
+        return super.handleExceptionInternal(e, body, headers, status, request);
     }
 
     @Override
@@ -113,7 +122,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         String detail = e.getCause() instanceof MismatchedInputException mismatch
                 ? "Invalid value for field '" + fieldPath(mismatch.getPath()) + "'"
                 : "Request body is missing or malformed";
-        return handleExceptionInternal(e, ProblemDetail.forStatusAndDetail(status, detail), headers, status, request);
+        // Not e.getMessage(): Jackson's message quotes the rejected value, which can be a password.
+        log.warn("{} {}", status.value(), detail);
+        return super.handleExceptionInternal(e, ProblemDetail.forStatusAndDetail(status, detail), headers, status, request);
     }
 
     private static String fieldPath(List<JacksonException.Reference> path) {

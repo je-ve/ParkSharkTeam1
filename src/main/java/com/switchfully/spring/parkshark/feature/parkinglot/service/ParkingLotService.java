@@ -1,14 +1,9 @@
 package com.switchfully.spring.parkshark.feature.parkinglot.service;
 
-import com.switchfully.spring.parkshark.common.exception.NotFoundException;
 import com.switchfully.spring.parkshark.feature.division.domain.Division;
 import com.switchfully.spring.parkshark.feature.division.service.DivisionService;
-import com.switchfully.spring.parkshark.feature.member.api.dto.MemberDetailsDto;
-import com.switchfully.spring.parkshark.feature.member.domain.Member;
-import com.switchfully.spring.parkshark.feature.member.exception.MemberNotFoundException;
 import com.switchfully.spring.parkshark.feature.parkinglot.api.ContactPersonMapper;
 import com.switchfully.spring.parkshark.feature.parkinglot.api.ParkingLotMapper;
-import com.switchfully.spring.parkshark.feature.parkinglot.api.dto.ParkingLotDto;
 import com.switchfully.spring.parkshark.feature.parkinglot.api.dto.ParkingLotOverviewDto;
 import com.switchfully.spring.parkshark.feature.parkinglot.api.dto.ParkingLotWithDivisionDto;
 import com.switchfully.spring.parkshark.feature.parkinglot.api.request.CreateContactPersonRequest;
@@ -49,7 +44,7 @@ public class ParkingLotService {
         this.contactPersonMapper = contactPersonMapper;
     }
 
-    public ParkingLotDto createParkingLot(CreateParkingLotRequest request) {
+    public ParkingLotWithDivisionDto createParkingLot(CreateParkingLotRequest request) {
         Division division = divisionService.getDivisionById(request.divisionId());
         ContactPerson contactPerson = request.contactPersonId() != null
                 ? getContactPerson(request.contactPersonId())
@@ -57,7 +52,7 @@ public class ParkingLotService {
 
         ParkingLot parkingLot = parkingLotRepository.save(
                 parkingLotMapper.toEntity(request, contactPerson, division));
-        return parkingLotMapper.toDto(parkingLot);
+        return parkingLotMapper.toWithDivisionDto(parkingLot);
     }
 
     private ContactPerson getContactPerson(UUID id) {
@@ -89,7 +84,7 @@ public class ParkingLotService {
     }
 
 
-    void verifyEmailDoesNotExist(String email) {
+    private void verifyEmailDoesNotExist(String email) {
         contactPersonRepository.findByEmail(email).ifPresent(existing -> {
             throw ContactPersonConflictException.emailAlreadyUsed(existing.getEmail(), existing.getId());
         });

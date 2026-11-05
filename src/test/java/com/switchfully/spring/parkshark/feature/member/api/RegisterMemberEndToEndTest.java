@@ -92,6 +92,52 @@ class RegisterMemberEndToEndTest {
     }
 
     @Test
+    void givenAnEmailAlreadyInUseWithOtherCapitals_whenRegistering_thenReturns409() {
+        String email = uniqueEmail();
+        jsonRequest().body(validMember(email, "\"GOLD\"")).post("/members").then().statusCode(HttpStatus.CREATED.value());
+
+        Response response = jsonRequest().body(validMember(email.toUpperCase(), "\"BRONZE\"")).post("/members");
+
+        response.then()
+                .statusCode(HttpStatus.CONFLICT.value())
+                .body("detail", equalTo("Email " + email + " is already in use"));
+    }
+
+    @Test
+    void givenARegisteredMember_whenLoggingInWithEmailAndPassword_thenTheyAreAuthenticatedAsAMember() {
+        String email = uniqueEmail();
+        jsonRequest().body(validMember(email, "\"BRONZE\"")).post("/members").then().statusCode(HttpStatus.CREATED.value());
+
+        // POST /invoices is a member-only endpoint: 201 proves both the login and the MEMBER role.
+        RestAssured.given().port(port)
+                .auth().preemptive().basic(email.toUpperCase(), "secret123")
+                .post("/invoices")
+                .then()
+                .statusCode(HttpStatus.CREATED.value());
+    }
+
+    @Test
+    void givenARegisteredMember_whenLoggingInWithAWrongPassword_thenReturns401() {
+        String email = uniqueEmail();
+        jsonRequest().body(validMember(email, "\"BRONZE\"")).post("/members").then().statusCode(HttpStatus.CREATED.value());
+
+        RestAssured.given().port(port)
+                .auth().preemptive().basic(email, "wrong-password")
+                .post("/invoices")
+                .then()
+                .statusCode(HttpStatus.UNAUTHORIZED.value());
+    }
+
+    @Test
+    void givenAValidMember_whenRegistering_thenThePasswordIsNotInTheResponse() {
+        jsonRequest().body(validMember(uniqueEmail(), "\"BRONZE\"")).post("/members")
+                .then()
+                .statusCode(HttpStatus.CREATED.value())
+                .body("password", org.hamcrest.Matchers.nullValue())
+                .body("passwordHash", org.hamcrest.Matchers.nullValue());
+    }
+
+    @Test
     void givenMissingAndInvalidFields_whenRegistering_thenReturns400ListingEveryInvalidField() {
         RequestSpecification request = jsonRequest().body("""
                 {

@@ -1,6 +1,7 @@
 package com.switchfully.spring.parkshark.feature.allocation.domain;
 
 import com.switchfully.spring.parkshark.common.domain.Address;
+import com.switchfully.spring.parkshark.feature.allocation.exception.AllocationConflictException;
 import com.switchfully.spring.parkshark.feature.division.domain.Division;
 import com.switchfully.spring.parkshark.feature.member.domain.LicensePlate;
 import com.switchfully.spring.parkshark.feature.member.domain.Member;
@@ -13,10 +14,13 @@ import com.switchfully.spring.parkshark.feature.security.domain.Role;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class AllocationTest {
 
@@ -61,5 +65,40 @@ class AllocationTest {
 
         assertThat(allocation.getLicensePlateNumber()).isEqualTo("2-XYZ-999");
         assertThat(member.getLicensePlate().getNumber()).isEqualTo("1-ABC-123");
+    }
+
+    private static Clock clockAt(LocalDateTime time) {
+        return Clock.fixed(time.atZone(ZoneId.of("Europe/Brussels")).toInstant(), ZoneId.of("Europe/Brussels"));
+    }
+
+    @Test
+    void givenOngoingAllocation_whenStopping_thenItIsStoppedAtTheClockTime() {
+        Allocation allocation = new Allocation(START_TIME, member, "1-ABC-123", parkingLot);
+
+        allocation.stop(clockAt(START_TIME.plusHours(2)));
+
+        assertThat(allocation.getStatus()).isEqualTo(AllocationStatus.STOPPED);
+        assertThat(allocation.getEndTime()).isEqualTo(START_TIME.plusHours(2));
+    }
+
+    @Test
+    void givenStoppedAllocation_whenStoppingAgain_thenThrowsConflictAndKeepsTheFirstStopTime() {
+        Allocation allocation = new Allocation(START_TIME, member, "1-ABC-123", parkingLot);
+        allocation.stop(clockAt(START_TIME.plusHours(2)));
+
+        assertThatThrownBy(() -> allocation.stop(clockAt(START_TIME.plusHours(5))))
+                .isInstanceOf(AllocationConflictException.class);
+        assertThat(allocation.getEndTime()).isEqualTo(START_TIME.plusHours(2));
+    }
+
+    @Test
+    void givenInvoicedAllocation_whenStopping_thenThrowsAndStaysInvoiced() {
+        Allocation allocation = new Allocation(START_TIME, member, "1-ABC-123", parkingLot);
+        allocation.stop(clockAt(START_TIME.plusHours(2)));
+        allocation.markAsInvoiced();
+
+        assertThatThrownBy(() -> allocation.stop(clockAt(START_TIME.plusHours(5))))
+                .isInstanceOf(AllocationConflictException.class);
+        assertThat(allocation.getStatus()).isEqualTo(AllocationStatus.INVOICED);
     }
 }

@@ -12,8 +12,10 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.List;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasItems;
@@ -102,6 +104,24 @@ class DivisionControllerTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$").isArray())
                     .andExpect(jsonPath("$[*].name", hasItems(firstName, secondName)));
+        }
+
+        @Test
+        @WithMockUser(authorities = "VIEW_DIVISIONS")
+        void givenASubdivision_whenGetAllDivisions_thenEachDivisionShowsItsParent() throws Exception {
+            String parentName = uniqueName();
+            String childName = uniqueName();
+            UUID parentId = createDivision(parentName);
+            createSubdivision(childName, parentId);
+
+            String response = mockMvc.perform(get("/divisions"))
+                    .andExpect(status().isOk())
+                    .andReturn().getResponse().getContentAsString();
+
+            List<String> childParent = JsonPath.read(response, "$[?(@.name == '%s')].parentId".formatted(childName));
+            List<Object> topParent = JsonPath.read(response, "$[?(@.name == '%s')].parentId".formatted(parentName));
+            assertThat(childParent).containsExactly(parentId.toString());
+            assertThat(topParent).containsExactly((Object) null);
         }
 
         @Test

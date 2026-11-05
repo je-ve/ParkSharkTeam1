@@ -1,6 +1,5 @@
 package com.switchfully.spring.parkshark.feature.parkinglot.api;
 
-import com.switchfully.spring.parkshark.feature.parkinglot.api.dto.ParkingLotDto;
 import com.switchfully.spring.parkshark.feature.parkinglot.api.dto.ParkingLotOverviewDto;
 import com.switchfully.spring.parkshark.feature.parkinglot.api.dto.ParkingLotWithDivisionDto;
 import com.switchfully.spring.parkshark.feature.parkinglot.api.request.CreateParkingLotRequest;
@@ -27,8 +26,8 @@ public class ParkingLotController {
     @PostMapping
     @Secured("CREATE_PARKING_LOT")
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Create a parking lot, with a new or an existing contact person")
-    public ParkingLotDto createParkingLot(@RequestBody @Valid CreateParkingLotRequest request) {
+    @Operation(summary = "Create a parking lot, with a new or an existing contact person; returns it with its division")
+    public ParkingLotWithDivisionDto createParkingLot(@RequestBody @Valid CreateParkingLotRequest request) {
         return parkingLotService.createParkingLot(request);
     }
 

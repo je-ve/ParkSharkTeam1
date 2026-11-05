@@ -43,7 +43,6 @@ public class DivisionService {
     }
 
     public DivisionOverviewDto createSubdivision(CreateDivisionRequest request, UUID parentId) {
-        verifyParameterIsFilledIn(parentId.toString(), "ID");
         Division parent = getDivisionById(parentId);
         verifyDivisionNameIsUnique(request.name());
 
@@ -68,21 +67,10 @@ public class DivisionService {
 
     @Transactional(readOnly = true)
     public DivisionOverviewDto getDivisionOverview(UUID id) {
-        verifyParameterIsFilledIn(id.toString(), "ID");
-
         Division division = getDivisionById(id);
-        DivisionDto parentDto = division.getParentId() == null ?
-                null : divisionMapper.mapToDto(getDivisionById(division.getParentId()));
-        List<DivisionDto> childrenDto = divisionMapper.mapToDto(divisionRepository.getAllByParentId(id));
+        Division parent = division.getParentId() == null ? null : getDivisionById(division.getParentId());
 
-        return new DivisionOverviewDto(
-                division.getId(),
-                division.getName(),
-                division.getOriginalName(),
-                division.getDirector(),
-                parentDto,
-                childrenDto
-        );
+        return divisionMapper.mapToDto(division, parent, divisionRepository.getAllByParentId(id));
     }
 
     @Transactional(readOnly = true)
@@ -90,11 +78,6 @@ public class DivisionService {
         return divisionMapper.mapToDto(
                 divisionRepository.findAll(Sort.by("name"))
         );
-    }
-
-
-    private void verifyParameterIsFilledIn(String value, String parameterName) {
-        if (value == null || value.isEmpty()) throw DivisionNotFoundException.divisionNotFoundException(parameterName);
     }
 
 

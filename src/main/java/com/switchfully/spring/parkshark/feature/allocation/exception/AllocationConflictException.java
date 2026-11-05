@@ -13,6 +13,10 @@ public class AllocationConflictException extends ConflictException {
         return new AllocationConflictException(messageFor(id.toString()));
     }
 
+    public static AllocationConflictException notActiveException(UUID allocationId) {
+        return new AllocationConflictException("Allocation %s is not active and cannot be stopped.".formatted(allocationId));
+    }
+
     private static String messageFor(String parkingLotId) {
         return "Parking lot %s is full.".formatted(parkingLotId);
     }

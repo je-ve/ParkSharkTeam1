@@ -8,7 +8,6 @@ public enum Role {
             Feature.STOP_ALLOCATION,
             Feature.GET_MONTHLY_INVOICE),
     MANAGER(
-            Feature.CREATE_MEMBER,
             Feature.CREATE_DIVISION,
             Feature.VIEW_DIVISIONS,
             Feature.CREATE_PARKING_LOT,

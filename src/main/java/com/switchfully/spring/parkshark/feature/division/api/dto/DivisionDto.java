@@ -6,6 +6,7 @@ public record DivisionDto(
         UUID id,
         String name,
         String originalName,
-        String director
+        String director,
+        UUID parentId
 ) {
 }
