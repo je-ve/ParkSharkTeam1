@@ -17,5 +17,4 @@ public class AllocationConflictException extends ConflictException {
         return "Parking lot %s is full.".formatted(parkingLotId);
     }
 
-
 }

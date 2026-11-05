@@ -44,14 +44,14 @@ public class AllocationService {
     }
 
     public CreatedAllocationDto createAllocation(StartingParkingAllocationRequest request, UUID credentialsId) {
-        Member member = memberRepository.findByCredentialsId(credentialsId).orElseThrow(() -> new NotFoundException(credentialsId.toString()));
-        ParkingLot parkingLot = parkingLotRepository.findById(request.parkingLotId()).orElseThrow(() -> new NotFoundException(request.parkingLotId().toString()));
-        if (!member.getLicensePlate().getNumber().equals(request.licencePlate()) && member.getMembershipLevel() != MembershipLevel.GOLD){
-            throw AllocationBadRequestException.wrongMembershipLevelException(member.getMembershipLevel().name());
-        }
-        if (parkingLot.getCapacity() <= allocationRepository.countByParkingLotIdAndStatus(request.parkingLotId(), AllocationStatus.ONGOING)) {
-            throw AllocationConflictException.parkingLotIsFullException(parkingLot.getId());
-        }
+        Member member = memberRepository.findByCredentialsId(credentialsId)
+                .orElseThrow(() -> new NotFoundException(credentialsId.toString()));
+        ParkingLot parkingLot = parkingLotRepository.findById(request.parkingLotId())
+                .orElseThrow(() -> new NotFoundException(request.parkingLotId().toString()));
+
+        verifyLicencePlateMatchesMembers(member, request.licencePlate());
+        verifyParkingLotCapacity(parkingLot, request.parkingLotId());
+
         try {
             Allocation allocation = allocationRepository.saveAndFlush(
                     new Allocation(
@@ -84,5 +84,16 @@ public class AllocationService {
         allocation.setEndTime(LocalDateTime.now(clock));
 
         return allocationMapper.toDto(allocationRepository.saveAndFlush(allocation));
+    }
+
+
+    private void verifyLicencePlateMatchesMembers(Member member, String licencePlate) {
+        if (!member.getLicensePlate().getNumber().equals(licencePlate) && member.getMembershipLevel() != MembershipLevel.GOLD)
+            throw AllocationBadRequestException.wrongMembershipLevelException(member.getMembershipLevel().name());
+    }
+
+    private void verifyParkingLotCapacity(ParkingLot parkingLot, UUID requestParkingLotId) {
+        if (parkingLot.getCapacity() <= allocationRepository.countByParkingLotIdAndStatus(requestParkingLotId, AllocationStatus.ONGOING))
+            throw AllocationConflictException.parkingLotIsFullException(parkingLot.getId());
     }
 }
