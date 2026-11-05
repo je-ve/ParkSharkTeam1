@@ -88,15 +88,7 @@ public class Allocation {
     }
 
     public void stop(Clock clock) {
-        setStatus(AllocationStatus.STOPPED);
-        setEndTime(LocalDateTime.now(clock));
-    }
-
-    public void setEndTime(LocalDateTime endTime) {
-        this.endTime = endTime;
-    }
-
-    public void setStatus(AllocationStatus status) {
-        this.status = status;
+        this.status = AllocationStatus.STOPPED;
+        this.endTime = LocalDateTime.now(clock);
     }
 }
