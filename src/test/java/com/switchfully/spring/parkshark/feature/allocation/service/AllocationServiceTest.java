@@ -7,11 +7,12 @@ import com.switchfully.spring.parkshark.common.exception.NotFoundException;
 import com.switchfully.spring.parkshark.feature.allocation.api.dto.CreatedAllocationDto;
 import com.switchfully.spring.parkshark.feature.allocation.api.dto.AllocationDto;
 import com.switchfully.spring.parkshark.feature.allocation.api.request.StartingParkingAllocationRequest;
-import com.switchfully.spring.parkshark.feature.allocation.api.request.StopParkingAllocationRequest;
 import com.switchfully.spring.parkshark.feature.allocation.domain.Allocation;
 import com.switchfully.spring.parkshark.feature.allocation.domain.AllocationRepository;
 import com.switchfully.spring.parkshark.feature.allocation.domain.AllocationStatus;
 import com.switchfully.spring.parkshark.feature.allocation.exception.AllocationBadRequestException;
+import com.switchfully.spring.parkshark.feature.allocation.exception.AllocationConflictException;
+import com.switchfully.spring.parkshark.feature.allocation.exception.AllocationForbiddenException;
 import com.switchfully.spring.parkshark.feature.allocation.exception.AllocationNotFoundException;
 import com.switchfully.spring.parkshark.feature.allocation.api.AllocationMapper;
 import com.switchfully.spring.parkshark.feature.division.domain.Division;
@@ -34,7 +35,6 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
@@ -207,19 +207,6 @@ class AllocationServiceTest {
         verify(allocationRepository, never()).saveAndFlush(any());
     }
 
-    @DisplayName("A database constraint violation on save is turned into a conflict")
-    @Test
-    void givenConstraintViolationOnSave_whenCreateAllocation_thenThrowsConflict() {
-        givenMemberAndParkingLot(member(MembershipLevel.BRONZE), parkingLot(2));
-        when(allocationRepository.countByParkingLotIdAndStatus(parkingLotId, AllocationStatus.ONGOING)).thenReturn(0);
-        when(allocationRepository.saveAndFlush(any(Allocation.class)))
-                .thenThrow(new DataIntegrityViolationException("constraint"));
-
-        assertThatThrownBy(() -> service.createAllocation(request(MEMBER_PLATE), credentialsId))
-                .isInstanceOf(ConflictException.class)
-                .hasMessageContaining("full");
-    }
-
     @DisplayName("The member is resolved from the logged-in user, never from the request")
     @Test
     void givenLoggedInUser_whenCreateAllocation_thenMemberIsLookedUpByTheirCredentialsId() {
@@ -249,18 +236,13 @@ class AllocationServiceTest {
         return allocation;
     }
 
-    private StopParkingAllocationRequest stopRequest() {
-        return new StopParkingAllocationRequest(allocationId);
-    }
-
     @DisplayName("The owner stops an ongoing allocation: status and stop time are set from the clock")
     @Test
     void givenOwnerAndOngoingAllocation_whenStopAllocation_thenAllocationIsStoppedNow() {
         Allocation allocation = ongoingAllocationOf(memberWithCredentialsId(credentialsId));
         when(allocationRepository.findById(allocationId)).thenReturn(Optional.of(allocation));
-        when(allocationRepository.saveAndFlush(any(Allocation.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        AllocationDto dto = service.stopAllocation(stopRequest(), credentialsId);
+        AllocationDto dto = service.stopAllocation(allocationId, credentialsId);
 
         assertThat(allocation.getStatus()).isEqualTo(AllocationStatus.STOPPED);
         assertThat(allocation.getEndTime()).isEqualTo(STOPPED_AT);
@@ -276,7 +258,7 @@ class AllocationServiceTest {
     void givenUnknownAllocation_whenStopAllocation_thenThrowsNotFoundAndSavesNothing() {
         when(allocationRepository.findById(allocationId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.stopAllocation(stopRequest(), credentialsId))
+        assertThatThrownBy(() -> service.stopAllocation(allocationId, credentialsId))
                 .isInstanceOf(AllocationNotFoundException.class)
                 .hasMessageContaining(allocationId.toString());
         verify(allocationRepository, never()).saveAndFlush(any());
@@ -284,15 +266,15 @@ class AllocationServiceTest {
 
     @DisplayName("An allocation that is already stopped cannot be stopped again and keeps its stop time")
     @Test
-    void givenAlreadyStoppedAllocation_whenStopAllocation_thenThrowsBadRequestAndStopTimeIsUnchanged() {
+    void givenAlreadyStoppedAllocation_whenStopAllocation_thenThrowsConflictAndStopTimeIsUnchanged() {
         Allocation allocation = ongoingAllocationOf(memberWithCredentialsId(credentialsId));
         LocalDateTime firstStopTime = LocalDateTime.of(2026, 1, 1, 8, 30);
         ReflectionTestUtils.setField(allocation, "status", AllocationStatus.STOPPED);
         ReflectionTestUtils.setField(allocation, "endTime", firstStopTime);
         when(allocationRepository.findById(allocationId)).thenReturn(Optional.of(allocation));
 
-        assertThatThrownBy(() -> service.stopAllocation(stopRequest(), credentialsId))
-                .isInstanceOf(AllocationBadRequestException.class);
+        assertThatThrownBy(() -> service.stopAllocation(allocationId, credentialsId))
+                .isInstanceOf(AllocationConflictException.class);
         assertThat(allocation.getEndTime()).isEqualTo(firstStopTime);
         assertThat(allocation.getStatus()).isEqualTo(AllocationStatus.STOPPED);
         verify(allocationRepository, never()).saveAndFlush(any());
@@ -300,12 +282,12 @@ class AllocationServiceTest {
 
     @DisplayName("A member cannot stop another member's allocation, which stays ongoing")
     @Test
-    void givenAllocationOfAnotherMember_whenStopAllocation_thenThrowsBadRequestAndAllocationStaysOngoing() {
+    void givenAllocationOfAnotherMember_whenStopAllocation_thenThrowsForbiddenAndAllocationStaysOngoing() {
         Allocation allocation = ongoingAllocationOf(memberWithCredentialsId(UUID.randomUUID()));
         when(allocationRepository.findById(allocationId)).thenReturn(Optional.of(allocation));
 
-        assertThatThrownBy(() -> service.stopAllocation(stopRequest(), credentialsId))
-                .isInstanceOf(AllocationBadRequestException.class);
+        assertThatThrownBy(() -> service.stopAllocation(allocationId, credentialsId))
+                .isInstanceOf(AllocationForbiddenException.class);
         assertThat(allocation.getStatus()).isEqualTo(AllocationStatus.ONGOING);
         assertThat(allocation.getEndTime()).isNull();
         verify(allocationRepository, never()).saveAndFlush(any());
@@ -313,13 +295,13 @@ class AllocationServiceTest {
 
     @DisplayName("Ownership is checked on the credentials id, not on the member id")
     @Test
-    void givenMemberIdInsteadOfCredentialsId_whenStopAllocation_thenThrowsBadRequest() {
+    void givenMemberIdInsteadOfCredentialsId_whenStopAllocation_thenThrowsForbidden() {
         Member owner = memberWithCredentialsId(credentialsId);
         Allocation allocation = ongoingAllocationOf(owner);
         when(allocationRepository.findById(allocationId)).thenReturn(Optional.of(allocation));
 
-        assertThatThrownBy(() -> service.stopAllocation(stopRequest(), owner.getId()))
-                .isInstanceOf(AllocationBadRequestException.class);
+        assertThatThrownBy(() -> service.stopAllocation(allocationId, owner.getId()))
+                .isInstanceOf(AllocationForbiddenException.class);
         assertThat(allocation.getStatus()).isEqualTo(AllocationStatus.ONGOING);
         verify(allocationRepository, never()).saveAndFlush(any());
     }

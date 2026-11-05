@@ -48,8 +48,8 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -140,22 +140,14 @@ class AllocationControllerTest {
                 new Allocation(LocalDateTime.of(2026, 1, 1, 8, 0), member, MEMBER_PLATE, parkingLot));
     }
 
-    private ResultActions putStopAllocation(Credentials credentials, Object allocationId) throws Exception {
-        return mockMvc.perform(put("/allocations")
-                .param("allocationId", String.valueOf(allocationId))
+    private ResultActions patchStopAllocation(Credentials credentials, Object allocationId) throws Exception {
+        return mockMvc.perform(patch("/allocations/{id}/stop", allocationId)
                 .with(user(AuthenticatedUser.from(credentials)))
                 .with(csrf()));
     }
 
-    private ResultActions putStopAllocationWithoutId(Credentials credentials) throws Exception {
-        return mockMvc.perform(put("/allocations")
-                .with(user(AuthenticatedUser.from(credentials)))
-                .with(csrf()));
-    }
-
-    private ResultActions putStopAllocationWithoutCredentials(Object allocationId) throws Exception {
-        return mockMvc.perform(put("/allocations")
-                .param("allocationId", String.valueOf(allocationId))
+    private ResultActions patchStopAllocationWithoutCredentials(Object allocationId) throws Exception {
+        return mockMvc.perform(patch("/allocations/{id}/stop", allocationId)
                 .with(csrf()));
     }
 
@@ -403,11 +395,11 @@ class AllocationControllerTest {
     class TestingStopped {
 
         @Test
-        void givenOwnerOfOngoingAllocation_whenPutStopAllocation_thenReturns200WithStoppedAllocation() throws Exception {
+        void givenOwnerOfOngoingAllocation_whenStopAllocation_thenReturns200WithStoppedAllocation() throws Exception {
             Member member = saveMember(MembershipLevel.BRONZE);
             Allocation allocation = saveOngoingAllocation(member, saveParkingLot(10));
 
-            putStopAllocation(member.getCredentials(), allocation.getId())
+            patchStopAllocation(member.getCredentials(), allocation.getId())
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.id").value(allocation.getId().toString()))
                     .andExpect(jsonPath("$.startTime").value("2026-01-01T08:00:00"))
@@ -417,11 +409,11 @@ class AllocationControllerTest {
         }
 
         @Test
-        void givenOwnerOfOngoingAllocation_whenPutStopAllocation_thenStatusAndStopTimeAreStored() throws Exception {
+        void givenOwnerOfOngoingAllocation_whenStopAllocation_thenStatusAndStopTimeAreStored() throws Exception {
             Member member = saveMember(MembershipLevel.BRONZE);
             Allocation allocation = saveOngoingAllocation(member, saveParkingLot(10));
 
-            putStopAllocation(member.getCredentials(), allocation.getId())
+            patchStopAllocation(member.getCredentials(), allocation.getId())
                     .andExpect(status().isOk());
 
             assertThat(statusOf(allocation.getId())).isEqualTo("STOPPED");
@@ -437,7 +429,7 @@ class AllocationControllerTest {
             postAllocation(waiting.getCredentials(), body(MEMBER_PLATE, parkingLot.getId()))
                     .andExpect(status().isConflict());
 
-            putStopAllocation(parked.getCredentials(), allocation.getId())
+            patchStopAllocation(parked.getCredentials(), allocation.getId())
                     .andExpect(status().isOk());
 
             postAllocation(waiting.getCredentials(), body(MEMBER_PLATE, parkingLot.getId()))
@@ -446,50 +438,81 @@ class AllocationControllerTest {
     }
 
     @Nested
-    @DisplayName("Testing STOP BAD REQUEST")
-    class TestingStopBadRequest {
+    @DisplayName("Testing STOP FORBIDDEN|CONFLICT|BAD REQUEST")
+    class TestingStopRefused {
 
         @Test
-        void givenAllocationOfAnotherMember_whenPutStopAllocation_thenReturns400AndAllocationStaysOngoing() throws Exception {
+        void givenAllocationOfAnotherMember_whenStopAllocation_thenReturns403AndAllocationStaysOngoing() throws Exception {
             Member owner = saveMember(MembershipLevel.BRONZE);
             Member someoneElse = saveMember(MembershipLevel.BRONZE);
             Allocation allocation = saveOngoingAllocation(owner, saveParkingLot(10));
 
-            putStopAllocation(someoneElse.getCredentials(), allocation.getId())
-                    .andExpect(status().isBadRequest());
+            patchStopAllocation(someoneElse.getCredentials(), allocation.getId())
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.detail").value("Allocation %s belongs to another member.".formatted(allocation.getId())));
 
             assertThat(statusOf(allocation.getId())).isEqualTo("ONGOING");
             assertThat(endTimeOf(allocation.getId())).isNull();
         }
 
         @Test
-        void givenAlreadyStoppedAllocation_whenPutStopAllocation_thenReturns400AndStopTimeIsUnchanged() throws Exception {
+        void givenStoppedAllocationOfAnotherMember_whenStopAllocation_thenReturns403NotRevealingItsStatus() throws Exception {
+            Member owner = saveMember(MembershipLevel.BRONZE);
+            Member someoneElse = saveMember(MembershipLevel.BRONZE);
+            Allocation allocation = saveOngoingAllocation(owner, saveParkingLot(10));
+            patchStopAllocation(owner.getCredentials(), allocation.getId()).andExpect(status().isOk());
+
+            patchStopAllocation(someoneElse.getCredentials(), allocation.getId())
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        void givenAlreadyStoppedAllocation_whenStopAllocation_thenReturns409AndStopTimeIsUnchanged() throws Exception {
             Member member = saveMember(MembershipLevel.BRONZE);
             Allocation allocation = saveOngoingAllocation(member, saveParkingLot(10));
-            putStopAllocation(member.getCredentials(), allocation.getId())
+            patchStopAllocation(member.getCredentials(), allocation.getId())
                     .andExpect(status().isOk());
             clock.setTo(NOW.plusHours(1));
 
-            putStopAllocation(member.getCredentials(), allocation.getId())
-                    .andExpect(status().isBadRequest());
+            patchStopAllocation(member.getCredentials(), allocation.getId())
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.detail").value("Allocation %s is not active and cannot be stopped.".formatted(allocation.getId())));
 
             assertThat(endTimeOf(allocation.getId())).isEqualTo(LocalDateTime.of(2026, 1, 1, 9, 0));
         }
 
         @Test
-        void givenNoAllocationId_whenPutStopAllocation_thenReturns400() throws Exception {
+        void givenMalformedAllocationId_whenStopAllocation_thenReturns400() throws Exception {
             Member member = saveMember(MembershipLevel.BRONZE);
 
-            putStopAllocationWithoutId(member.getCredentials())
+            patchStopAllocation(member.getCredentials(), "not-a-uuid")
                     .andExpect(status().isBadRequest());
+        }
+    }
+
+    @Nested
+    @DisplayName("Testing START validation and messages")
+    class TestingStartValidation {
+
+        @Test
+        void givenLicencePlateLongerThan20Characters_whenPostAllocation_thenReturns400NotParkingLotFull() throws Exception {
+            Member gold = saveMember(MembershipLevel.GOLD);
+            ParkingLot parkingLot = saveParkingLot(10);
+
+            postAllocation(gold.getCredentials(), body("X".repeat(21), parkingLot.getId()))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.errors.licencePlate[0]").value("License plate must be at most 20 characters"));
         }
 
         @Test
-        void givenMalformedAllocationId_whenPutStopAllocation_thenReturns400() throws Exception {
+        void givenUnknownParkingLot_whenPostAllocation_thenReturns404WithClearMessage() throws Exception {
             Member member = saveMember(MembershipLevel.BRONZE);
+            UUID unknown = UUID.randomUUID();
 
-            putStopAllocation(member.getCredentials(), "not-a-uuid")
-                    .andExpect(status().isBadRequest());
+            postAllocation(member.getCredentials(), body(MEMBER_PLATE, unknown))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString(unknown.toString())))
+                    .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("parking lot")));
         }
     }
 
@@ -498,10 +521,10 @@ class AllocationControllerTest {
     class TestingStopNotFound {
 
         @Test
-        void givenUnknownAllocation_whenPutStopAllocation_thenReturns404() throws Exception {
+        void givenUnknownAllocation_whenStopAllocation_thenReturns404() throws Exception {
             Member member = saveMember(MembershipLevel.BRONZE);
 
-            putStopAllocation(member.getCredentials(), UUID.randomUUID())
+            patchStopAllocation(member.getCredentials(), UUID.randomUUID())
                     .andExpect(status().isNotFound());
         }
     }
@@ -511,16 +534,16 @@ class AllocationControllerTest {
     class TestingStopSecurity {
 
         @Test
-        void givenNoCredentials_whenPutStopAllocation_thenReturns401() throws Exception {
-            putStopAllocationWithoutCredentials(UUID.randomUUID())
+        void givenNoCredentials_whenStopAllocation_thenReturns401() throws Exception {
+            patchStopAllocationWithoutCredentials(UUID.randomUUID())
                     .andExpect(status().isUnauthorized());
         }
 
         @Test
-        void givenManager_whenPutStopAllocation_thenReturns403() throws Exception {
+        void givenManager_whenStopAllocation_thenReturns403() throws Exception {
             Credentials manager = saveCredentials(Role.MANAGER);
 
-            putStopAllocation(manager, UUID.randomUUID())
+            patchStopAllocation(manager, UUID.randomUUID())
                     .andExpect(status().isForbidden());
         }
     }

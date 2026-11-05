@@ -1,23 +1,23 @@
 package com.switchfully.spring.parkshark.feature.allocation.service;
 
-import com.switchfully.spring.parkshark.common.exception.NotFoundException;
+import com.switchfully.spring.parkshark.feature.allocation.api.AllocationMapper;
 import com.switchfully.spring.parkshark.feature.allocation.api.dto.AllocationDto;
 import com.switchfully.spring.parkshark.feature.allocation.api.dto.CreatedAllocationDto;
 import com.switchfully.spring.parkshark.feature.allocation.api.request.StartingParkingAllocationRequest;
-import com.switchfully.spring.parkshark.feature.allocation.api.request.StopParkingAllocationRequest;
 import com.switchfully.spring.parkshark.feature.allocation.domain.Allocation;
 import com.switchfully.spring.parkshark.feature.allocation.domain.AllocationRepository;
 import com.switchfully.spring.parkshark.feature.allocation.domain.AllocationStatus;
 import com.switchfully.spring.parkshark.feature.allocation.exception.AllocationBadRequestException;
 import com.switchfully.spring.parkshark.feature.allocation.exception.AllocationConflictException;
-import com.switchfully.spring.parkshark.feature.allocation.api.AllocationMapper;
+import com.switchfully.spring.parkshark.feature.allocation.exception.AllocationForbiddenException;
 import com.switchfully.spring.parkshark.feature.allocation.exception.AllocationNotFoundException;
 import com.switchfully.spring.parkshark.feature.member.domain.Member;
 import com.switchfully.spring.parkshark.feature.member.domain.MemberRepository;
 import com.switchfully.spring.parkshark.feature.member.domain.MembershipLevel;
+import com.switchfully.spring.parkshark.feature.member.exception.MemberNotFoundException;
 import com.switchfully.spring.parkshark.feature.parkinglot.domain.ParkingLot;
 import com.switchfully.spring.parkshark.feature.parkinglot.domain.ParkingLotRepository;
-import org.springframework.dao.DataIntegrityViolationException;
+import com.switchfully.spring.parkshark.feature.parkinglot.exception.ParkingLotNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,30 +50,25 @@ public class AllocationService {
         verifyLicencePlateMatchesMember(member, request.licencePlate());
         verifyParkingLotCapacity(parkingLot);
 
-        try {
-            Allocation allocation = allocationRepository.saveAndFlush(
-                    new Allocation(
-                            LocalDateTime.now(clock),
-                            member,
-                            request.licencePlate(),
-                            parkingLot
-                    )
-            );
-            return allocationMapper.mapToDto(allocation);
-        } catch (DataIntegrityViolationException e) {
-            throw AllocationConflictException.parkingLotIsFullException(parkingLot.getId());
-        }
+        Allocation allocation = allocationRepository.saveAndFlush(
+                new Allocation(
+                        LocalDateTime.now(clock),
+                        member,
+                        request.licencePlate(),
+                        parkingLot
+                )
+        );
+        return allocationMapper.mapToDto(allocation);
     }
 
-    public AllocationDto stopAllocation(StopParkingAllocationRequest request, UUID credentialsId) {
+    public AllocationDto stopAllocation(UUID allocationId, UUID credentialsId) {
+        Allocation allocation = getAllocationById(allocationId);
 
-        Allocation allocation = getAllocationById(request.allocationId());
-
-        verifyAllocationStatusIsNotStopped(allocation);
+        // Ownership first: another member must not learn whether the allocation is still active.
         verifyAllocationBelongsTo(allocation, credentialsId);
-
         allocation.stop(clock);
-        return allocationMapper.toDto(allocationRepository.saveAndFlush(allocation));
+
+        return allocationMapper.toDto(allocation);
     }
 
 
@@ -90,12 +85,14 @@ public class AllocationService {
 
 
     private Member getMemberByCredentialsId(UUID credentialsId) {
-        return memberRepository.findByCredentialsId(credentialsId).orElseThrow(() -> new NotFoundException(credentialsId.toString()));
+        return memberRepository.findByCredentialsId(credentialsId)
+                .orElseThrow(() -> MemberNotFoundException.forLoggedInUser(credentialsId));
     }
 
 
     private ParkingLot getParkingLotById(UUID parkingLotId) {
-        return parkingLotRepository.findById(parkingLotId).orElseThrow(() -> new NotFoundException(parkingLotId.toString()));
+        return parkingLotRepository.findById(parkingLotId)
+                .orElseThrow(() -> new ParkingLotNotFoundException(parkingLotId));
     }
 
 
@@ -104,12 +101,7 @@ public class AllocationService {
     }
 
 
-    private void verifyAllocationStatusIsNotStopped(Allocation allocation) {
-        if (!allocation.getStatus().equals(AllocationStatus.ONGOING)) throw AllocationBadRequestException.wrongAllocationStatusException();
-    }
-
-
     private void verifyAllocationBelongsTo(Allocation allocation, UUID credentialsId) {
-        if (!allocation.getMember().getCredentials().getId().equals(credentialsId)) throw AllocationBadRequestException.allocationMemberIdMismatchException();
+        if (!allocation.isOwnedBy(credentialsId)) throw AllocationForbiddenException.notOwnerException(allocation.getId());
     }
 }

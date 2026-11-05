@@ -1,5 +1,6 @@
 package com.switchfully.spring.parkshark.feature.allocation.domain;
 
+import com.switchfully.spring.parkshark.feature.allocation.exception.AllocationConflictException;
 import com.switchfully.spring.parkshark.feature.member.domain.Member;
 import com.switchfully.spring.parkshark.feature.parkinglot.domain.ParkingLot;
 import jakarta.persistence.*;
@@ -88,7 +89,14 @@ public class Allocation {
     }
 
     public void stop(Clock clock) {
-        this.status = AllocationStatus.STOPPED;
+        if (status != AllocationStatus.ONGOING) {
+            throw AllocationConflictException.notActiveException(id);
+        }
         this.endTime = LocalDateTime.now(clock);
+        this.status = AllocationStatus.STOPPED;
+    }
+
+    public boolean isOwnedBy(UUID credentialsId) {
+        return member.getCredentials().getId().equals(credentialsId);
     }
 }

@@ -1,6 +1,5 @@
 package com.switchfully.spring.parkshark.feature.invoice.service;
 
-import com.switchfully.spring.parkshark.common.exception.NotFoundException;
 import com.switchfully.spring.parkshark.feature.allocation.domain.Allocation;
 import com.switchfully.spring.parkshark.feature.allocation.domain.AllocationRepository;
 import com.switchfully.spring.parkshark.feature.allocation.domain.AllocationStatus;
@@ -13,6 +12,7 @@ import com.switchfully.spring.parkshark.feature.invoice.exception.InvoiceConflic
 import com.switchfully.spring.parkshark.feature.invoice.exception.InvoiceNotFoundException;
 import com.switchfully.spring.parkshark.feature.member.domain.Member;
 import com.switchfully.spring.parkshark.feature.member.domain.MemberRepository;
+import com.switchfully.spring.parkshark.feature.member.exception.MemberNotFoundException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,7 +45,7 @@ public class InvoiceService {
 
     public MonthlyInvoice getMonthlyInvoice(UUID credentialsId) {
         Member member = memberRepository.findByCredentialsId(credentialsId)
-                .orElseThrow(() -> new NotFoundException("Could not find member for user " + credentialsId));
+                .orElseThrow(() -> MemberNotFoundException.forLoggedInUser(credentialsId));
         LocalDate today = LocalDate.now(clock);
 
         return invoiceRepository.findByMemberIdAndBillingMonth(member.getId(), Invoice.billingMonthOf(today))
