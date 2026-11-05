@@ -15,7 +15,8 @@ public class DivisionMapper {
                 division.getId(),
                 division.getName(),
                 division.getOriginalName(),
-                division.getDirector());
+                division.getDirector(),
+                division.getParentId());
     }
 
     public List<DivisionDto> mapToDto(List<Division> divisions) {
@@ -30,7 +31,7 @@ public class DivisionMapper {
                 current.getName(),
                 current.getOriginalName(),
                 current.getDirector(),
-                mapToDto(parent),
+                parent == null ? null : mapToDto(parent),
                 mapToDto(children)
         );
     }
