@@ -5,7 +5,8 @@ import java.util.Set;
 public enum Role {
     MEMBER(
             Feature.START_ALLOCATION,
-            Feature.STOP_ALLOCATION),
+            Feature.STOP_ALLOCATION,
+            Feature.GET_MONTHLY_INVOICE),
     MANAGER(
             Feature.CREATE_MEMBER,
             Feature.CREATE_DIVISION,
@@ -15,7 +16,9 @@ public enum Role {
             Feature.CREATE_SUBDIVISION,
             Feature.VIEW_DIVISION,
             Feature.VIEW_PARKING_LOTS,
-            Feature.VIEW_PARKING_LOT);
+            Feature.VIEW_PARKING_LOT,
+            Feature.VIEW_INVOICES,
+            Feature.CLOSE_INVOICE);
 
     private final Set<Feature> features;
 

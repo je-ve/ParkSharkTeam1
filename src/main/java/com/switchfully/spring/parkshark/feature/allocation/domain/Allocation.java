@@ -4,6 +4,7 @@ import com.switchfully.spring.parkshark.feature.member.domain.Member;
 import com.switchfully.spring.parkshark.feature.parkinglot.domain.ParkingLot;
 import jakarta.persistence.*;
 
+import java.time.Duration;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -41,6 +42,21 @@ public class Allocation {
     }
 
     protected Allocation() {
+    }
+
+    public void markAsInvoiced() {
+        if (status != AllocationStatus.STOPPED) {
+            throw new IllegalStateException("Only a stopped allocation can be invoiced, allocation %s is %s"
+                    .formatted(id, status));
+        }
+        this.status = AllocationStatus.INVOICED;
+    }
+
+    public Duration getParkedDuration() {
+        if (endTime == null) {
+            throw new IllegalStateException("Allocation %s is not stopped yet".formatted(id));
+        }
+        return Duration.between(startTime, endTime);
     }
 
     public UUID getId() {
