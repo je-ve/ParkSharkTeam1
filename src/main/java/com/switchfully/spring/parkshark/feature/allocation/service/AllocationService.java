@@ -72,9 +72,7 @@ public class AllocationService {
         verifyAllocationStatusIsNotStopped(allocation);
         verifyAllocationBelongsTo(allocation, credentialsId);
 
-        allocation.setStatus(AllocationStatus.STOPPED);
-        allocation.setEndTime(LocalDateTime.now(clock));
-
+        allocation.stop(clock);
         return allocationMapper.toDto(allocationRepository.saveAndFlush(allocation));
     }
 
